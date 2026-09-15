@@ -27,7 +27,7 @@ export const Sidebar: React.FC = () => {
     { label: 'My Courses', icon: BookOpen, href: '#courses' },
     { label: 'Schedule', icon: Calendar, href: '/Schedule' },
     { label: 'Assignments', icon: CheckSquare, href: '/Assignments' },
-    { label: 'Analytics', icon: BarChart3, href: '#analytics' },
+    { label: 'Analytics', icon: BarChart3, href: '/Analytics' },
     { label: 'Settings', icon: Settings, href: '#settings' },
   ]
 
