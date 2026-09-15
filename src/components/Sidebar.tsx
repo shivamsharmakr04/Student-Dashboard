@@ -9,7 +9,7 @@ import {
   Calendar,
   CheckSquare,
   BarChart3,
-  Settings,
+  Settings as SettingsIcon,
   Flame,
   GraduationCap,
   Sparkles,
@@ -24,11 +24,11 @@ export const Sidebar: React.FC = () => {
 
   const navItems = [
     { label: 'Dashboard', icon: LayoutDashboard, href: '/Dashboard' },
-    { label: 'My Courses', icon: BookOpen, href: '#courses' },
+    { label: 'My Courses', icon: BookOpen, href: '/Courses' },
     { label: 'Schedule', icon: Calendar, href: '/Schedule' },
     { label: 'Assignments', icon: CheckSquare, href: '/Assignments' },
     { label: 'Analytics', icon: BarChart3, href: '/Analytics' },
-    { label: 'Settings', icon: Settings, href: '#settings' },
+    { label: 'Settings', icon: SettingsIcon, href: '/Settings' },
   ]
 
   return (
