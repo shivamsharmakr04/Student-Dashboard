@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import Sidebar from '@/components/Sidebar'
-import { MOCK_ASSIGNMENTS } from '@/lib/assignmentData'
+import { useRealtimeAssignments } from '@/lib/realtimeService'
 import { Assignment, AssignmentStatus } from '@/types/assignment'
 import {
   CheckSquare,
@@ -17,13 +17,14 @@ import {
   MessageSquare,
   FileCheck,
   TrendingUp,
-  Sparkles
+  Sparkles,
+  Radio
 } from 'lucide-react'
 
 export default function AssignmentsPage() {
   const [activeTab, setActiveTab] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState<string>('')
-  const [assignments, setAssignments] = useState<Assignment[]>(MOCK_ASSIGNMENTS)
+  const { assignments, submitAssignment } = useRealtimeAssignments()
 
   // Filter assignments
   const filteredAssignments = assignments.filter((item) => {
@@ -39,7 +40,7 @@ export default function AssignmentsPage() {
   const pendingCount = assignments.filter((a) => a.status === 'pending').length
   const submittedCount = assignments.filter((a) => a.status === 'submitted' || a.status === 'graded').length
   const gradedAssignments = assignments.filter((a) => a.status === 'graded' && a.earned_score !== undefined)
-  
+
   const avgGrade =
     gradedAssignments.length > 0
       ? Math.round(
@@ -49,20 +50,10 @@ export default function AssignmentsPage() {
         ) / 10
       : 0
 
-  const completionRate = Math.round((submittedCount / assignments.length) * 100)
+  const completionRate = assignments.length > 0 ? Math.round((submittedCount / assignments.length) * 100) : 0
 
   const handleSimulateSubmit = (id: string) => {
-    setAssignments((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              status: 'submitted',
-              submission_date: 'Just now (Sep 15)'
-            }
-          : item
-      )
-    )
+    submitAssignment(id)
   }
 
   const getStatusBadge = (status: AssignmentStatus) => {

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import Sidebar from '@/components/Sidebar'
-import { MOCK_SCHEDULE_EVENTS } from '@/lib/scheduleData'
+import { useRealtimeSchedule } from '@/lib/realtimeService'
 import { ScheduleEvent, EventType } from '@/types/schedule'
 import {
   Calendar as CalendarIcon,
@@ -25,9 +25,10 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 export default function SchedulePage() {
   const [selectedDay, setSelectedDay] = useState<typeof DAYS[number]>('Monday')
   const [filterType, setFilterType] = useState<string>('all')
+  const { events } = useRealtimeSchedule()
 
   // Filter events by day and type
-  const dayEvents = MOCK_SCHEDULE_EVENTS.filter(
+  const dayEvents = events.filter(
     (event) => event.day === selectedDay
   ).filter((event) => {
     if (filterType === 'all') return true
@@ -89,7 +90,7 @@ export default function SchedulePage() {
           {/* Day Navigation Tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none">
             {DAYS.map((day) => {
-              const count = MOCK_SCHEDULE_EVENTS.filter((e) => e.day === day).length
+              const count = events.filter((e) => e.day === day).length
               const isSelected = selectedDay === day
 
               return (

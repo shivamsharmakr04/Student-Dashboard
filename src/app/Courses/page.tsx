@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import Sidebar from '@/components/Sidebar'
-import { MOCK_COURSES } from '@/lib/supabase'
+import { useRealtimeCourses } from '@/lib/realtimeService'
 import { Course } from '@/types/course'
 import { ProgressBar } from '@/components/ProgressBar'
 import {
@@ -24,8 +24,9 @@ export default function CoursesPage() {
   const [activeTab, setActiveTab] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
+  const { courses, updateCourseProgress } = useRealtimeCourses()
 
-  const filteredCourses = MOCK_COURSES.filter((course) => {
+  const filteredCourses = courses.filter((course) => {
     const matchesTab =
       activeTab === 'all' ||
       (activeTab === 'active' && course.progress < 100) ||
@@ -52,7 +53,7 @@ export default function CoursesPage() {
               </h2>
               <span className="inline-flex items-center gap-1 text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200/80">
                 <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" />
-                {MOCK_COURSES.length} Enrolled
+                {courses.length} Enrolled
               </span>
             </div>
             <p className="text-xs md:text-sm text-slate-500">
@@ -81,7 +82,7 @@ export default function CoursesPage() {
             </div>
             <div>
               <p className="text-xs font-semibold text-slate-500">Active Courses</p>
-              <p className="text-xl font-extrabold text-slate-900">{MOCK_COURSES.length} Courses</p>
+              <p className="text-xl font-extrabold text-slate-900">{courses.length} Courses</p>
             </div>
           </div>
 
@@ -115,9 +116,9 @@ export default function CoursesPage() {
 
           <div className="flex flex-wrap items-center gap-2">
             {[
-              { id: 'all', label: 'All Courses', count: MOCK_COURSES.length },
-              { id: 'active', label: 'In Progress', count: MOCK_COURSES.filter((c) => c.progress < 100).length },
-              { id: 'completed', label: 'Completed', count: MOCK_COURSES.filter((c) => c.progress === 100).length },
+              { id: 'all', label: 'All Courses', count: courses.length },
+              { id: 'active', label: 'In Progress', count: courses.filter((c) => c.progress < 100).length },
+              { id: 'completed', label: 'Completed', count: courses.filter((c) => c.progress === 100).length },
             ].map((tab) => (
               <button
                 key={tab.id}

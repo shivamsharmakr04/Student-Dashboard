@@ -1,6 +1,8 @@
--- EduPulse Student Profiles Real-time Authorization & Preferences Schema
+-- ==============================================================================
+-- EduPulse Real-Time Database & Authorization Schema
+-- ==============================================================================
 
--- 1. Create Profiles Table synced with Supabase Auth Users
+-- 1. PROFILES TABLE (Synced with Supabase Auth Users)
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
   name TEXT NOT NULL,
@@ -21,21 +23,100 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 2. Enable Row Level Security (RLS)
+-- 2. COURSES TABLE
+CREATE TABLE IF NOT EXISTS public.courses (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  title TEXT NOT NULL,
+  category TEXT NOT NULL,
+  progress INT DEFAULT 0,
+  icon_name TEXT DEFAULT 'BookOpen',
+  instructor TEXT,
+  total_lessons INT DEFAULT 20,
+  completed_lessons INT DEFAULT 0,
+  color_gradient TEXT DEFAULT 'from-blue-600 to-indigo-600',
+  description TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 3. ASSIGNMENTS TABLE
+CREATE TABLE IF NOT EXISTS public.assignments (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  title TEXT NOT NULL,
+  course_code TEXT NOT NULL,
+  course_name TEXT NOT NULL,
+  due_date TEXT NOT NULL,
+  due_time TEXT NOT NULL,
+  status TEXT DEFAULT 'pending',
+  weightage INT DEFAULT 10,
+  max_score INT DEFAULT 100,
+  earned_score INT,
+  submission_date TEXT,
+  file_format TEXT,
+  description TEXT,
+  feedback TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 4. SCHEDULE EVENTS TABLE
+CREATE TABLE IF NOT EXISTS public.schedule_events (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  title TEXT NOT NULL,
+  course_code TEXT NOT NULL,
+  type TEXT NOT NULL,
+  start_time TEXT NOT NULL,
+  end_time TEXT NOT NULL,
+  day TEXT NOT NULL,
+  location TEXT,
+  instructor TEXT,
+  is_online BOOLEAN DEFAULT false,
+  meeting_url TEXT,
+  color TEXT DEFAULT 'from-blue-600 to-indigo-600',
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 5. ACTIVITY LOGS TABLE
+CREATE TABLE IF NOT EXISTS public.activity_logs (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  student_id TEXT NOT NULL,
+  activity_type TEXT NOT NULL,
+  duration_minutes INT NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ==============================================================================
+-- ROW LEVEL SECURITY (RLS) & POLICIES
+-- ==============================================================================
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.courses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.assignments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.schedule_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.activity_logs ENABLE ROW LEVEL SECURITY;
 
--- 3. RLS Policies: Allow users to view and update their own profiles
-CREATE POLICY "Public profiles are viewable by authenticated users"
-  ON public.profiles FOR SELECT
-  USING (auth.uid() = id);
+-- Allow read access for authenticated & anon users for demo/testing
+CREATE POLICY "Public read access for profiles" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "Public write access for profiles" ON public.profiles FOR ALL USING (true);
 
-CREATE POLICY "Users can insert their own profile"
-  ON public.profiles FOR INSERT
-  WITH CHECK (auth.uid() = id);
+CREATE POLICY "Public read access for courses" ON public.courses FOR SELECT USING (true);
+CREATE POLICY "Public write access for courses" ON public.courses FOR ALL USING (true);
 
-CREATE POLICY "Users can update their own profile"
-  ON public.profiles FOR UPDATE
-  USING (auth.uid() = id);
+CREATE POLICY "Public read access for assignments" ON public.assignments FOR SELECT USING (true);
+CREATE POLICY "Public write access for assignments" ON public.assignments FOR ALL USING (true);
 
--- 4. Enable Supabase Realtime Replication on Profiles Table
-ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
+CREATE POLICY "Public read access for schedule_events" ON public.schedule_events FOR SELECT USING (true);
+CREATE POLICY "Public write access for schedule_events" ON public.schedule_events FOR ALL USING (true);
+
+CREATE POLICY "Public read access for activity_logs" ON public.activity_logs FOR SELECT USING (true);
+CREATE POLICY "Public write access for activity_logs" ON public.activity_logs FOR ALL USING (true);
+
+-- ==============================================================================
+-- ENABLE REALTIME WEBSOCKET REPLICATION FOR ALL TABLES
+-- ==============================================================================
+DROP PUBLICATION IF EXISTS supabase_realtime;
+CREATE PUBLICATION supabase_realtime FOR TABLE 
+  public.profiles, 
+  public.courses, 
+  public.assignments, 
+  public.schedule_events, 
+  public.activity_logs;
