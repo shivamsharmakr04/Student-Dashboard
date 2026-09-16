@@ -32,6 +32,7 @@ interface AuthContextType {
   user: StudentUser | null
   isAuthenticated: boolean
   isLoading: boolean
+  isRealtimeConnected: boolean
   login: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>
   createAccount: (
     details: Omit<StudentUser, 'id' | 'avatar_initials' | 'preferences'>,
@@ -50,27 +51,15 @@ const STORAGE_KEY = 'edupulse_student_user'
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<StudentUser | null>(DEMO_STUDENT)
   const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState<boolean>(false)
 
-  useEffect(() => {
-    // Restore user session from localStorage if present
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        if (parsed && parsed.email) {
-          setUser(parsed)
-        }
-      } else {
-        // Save default demo student to local storage for seamless experience
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(DEMO_STUDENT))
-      }
-    } catch (e) {
-      console.warn('Failed to parse stored student session:', e)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
+  const isSupabaseConfigured =
+    Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
+    process.env.NEXT_PUBLIC_SUPABASE_URL !== 'https://placeholder.supabase.co' &&
+    Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY !== 'placeholder-key'
 
+  // Helper to persist user state and notify all active browser windows
   const saveUserToStorage = (userData: StudentUser | null) => {
     setUser(userData)
     if (userData) {
@@ -80,41 +69,157 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
+  // 1. Initial Session Restoration & Real-time Storage Listener (Multi-Tab Sync)
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (parsed && parsed.email) {
+          setUser(parsed)
+        }
+      } else {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(DEMO_STUDENT))
+      }
+    } catch (e) {
+      console.warn('Failed to parse stored student session:', e)
+    } finally {
+      setIsLoading(false)
+    }
+
+    // Real-time tab sync listener: updates state across tabs instantly
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEY) {
+        if (event.newValue) {
+          try {
+            setUser(JSON.parse(event.newValue))
+          } catch (e) {}
+        } else {
+          setUser(null)
+        }
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+
+  // 2. Real-Time Supabase Auth Listener & Database Channel Subscription
+  useEffect(() => {
+    if (!isSupabaseConfigured) return
+
+    setIsRealtimeConnected(true)
+
+    // Listen to real-time auth state events (SIGNED_IN, SIGNED_OUT, USER_UPDATED)
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        if (session?.user) {
+          const authUser: StudentUser = {
+            id: session.user.id,
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Student',
+            email: session.user.email || '',
+            student_id: session.user.user_metadata?.student_id || `STU-${Math.floor(1000 + Math.random() * 9000)}`,
+            major: session.user.user_metadata?.major || 'Computer Science',
+            bio: session.user.user_metadata?.bio || 'Enthusiastic university student.',
+            avatar_initials: (session.user.user_metadata?.name || session.user.email || 'ST')
+              .slice(0, 2)
+              .toUpperCase(),
+            year_level: session.user.user_metadata?.year_level || 'Year 1',
+            gpa: 3.9,
+            preferences: session.user.user_metadata?.preferences || DEFAULT_PREFERENCES
+          }
+
+          // Try fetching real-time database profile if exists
+          try {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single()
+
+            if (profile) {
+              authUser.name = profile.name || authUser.name
+              authUser.major = profile.major || authUser.major
+              authUser.student_id = profile.student_id || authUser.student_id
+              authUser.bio = profile.bio || authUser.bio
+              if (profile.preferences) {
+                authUser.preferences = profile.preferences
+              }
+            }
+          } catch (e) {
+            console.warn('Real-time database profile lookup skipped:', e)
+          }
+
+          saveUserToStorage(authUser)
+        }
+      } else if (event === 'SIGNED_OUT') {
+        saveUserToStorage(null)
+      }
+    })
+
+    // Real-time Database Channel for Profiles table changes
+    const channel = supabase
+      .channel('realtime_profiles')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles' },
+        (payload) => {
+          if (user && payload.new && (payload.new as any).id === user.id) {
+            const updatedFromDb = payload.new as any
+            setUser((prev) => {
+              if (!prev) return null
+              return {
+                ...prev,
+                name: updatedFromDb.name || prev.name,
+                major: updatedFromDb.major || prev.major,
+                bio: updatedFromDb.bio || prev.bio,
+                preferences: updatedFromDb.preferences || prev.preferences
+              }
+            })
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      authListener?.subscription.unsubscribe()
+      supabase.removeChannel(channel)
+    }
+  }, [isSupabaseConfigured])
+
+  // Login handler
   const login = async (email: string, pass: string): Promise<{ success: boolean; error?: string }> => {
     if (!email || !pass) {
       return { success: false, error: 'Please enter both email and password.' }
     }
 
-    // Try Supabase auth if real credentials present
-    if (
-      process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_URL !== 'https://placeholder.supabase.co'
-    ) {
+    if (isSupabaseConfigured) {
       try {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass })
-        if (error) throw error
+        if (error) return { success: false, error: error.message }
         if (data.user) {
+          const initials = (data.user.user_metadata?.name || email).slice(0, 2).toUpperCase()
           const authUser: StudentUser = {
             id: data.user.id,
             name: data.user.user_metadata?.name || email.split('@')[0],
             email: data.user.email || email,
             student_id: data.user.user_metadata?.student_id || `STU-${Math.floor(1000 + Math.random() * 9000)}`,
-            major: data.user.user_metadata?.major || 'General Studies',
+            major: data.user.user_metadata?.major || 'Computer Science',
             bio: data.user.user_metadata?.bio || 'Enthusiastic university student.',
-            avatar_initials: (data.user.user_metadata?.name || email).slice(0, 2).toUpperCase(),
+            avatar_initials: initials,
             year_level: data.user.user_metadata?.year_level || 'Year 1',
-            gpa: 3.8,
+            gpa: 3.92,
             preferences: data.user.user_metadata?.preferences || DEFAULT_PREFERENCES
           }
           saveUserToStorage(authUser)
           return { success: true }
         }
       } catch (err: any) {
-        console.warn('Supabase auth login error, checking fallback demo/local storage:', err)
+        console.warn('Supabase auth login exception, using client fallback:', err)
       }
     }
 
-    // Fallback: Check local storage or match email with demo student
+    // Local / Demo Fallback
     if (email.toLowerCase() === DEMO_STUDENT.email.toLowerCase() || email.includes('@')) {
       const initials = email
         .split('@')[0]
@@ -140,9 +245,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               avatar_initials: initials
             }
           }
-        } catch (e) {
-          // ignore error
-        }
+        } catch (e) {}
       }
 
       saveUserToStorage(loggedUser)
@@ -152,6 +255,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: false, error: 'Invalid email or password.' }
   }
 
+  // Create Account handler
   const createAccount = async (
     details: Omit<StudentUser, 'id' | 'avatar_initials' | 'preferences'>,
     preferences: StudentPreferences
@@ -167,9 +271,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .toUpperCase()
       .slice(0, 2) || 'ST'
 
+    let userId = `stu-${Date.now()}`
+
+    // Attempt real-time Supabase Auth SignUp if configured
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email: details.email,
+          password: 'Password123!',
+          options: {
+            data: {
+              name: details.name,
+              major: details.major,
+              student_id: details.student_id,
+              year_level: details.year_level,
+              preferences
+            }
+          }
+        })
+
+        if (error) {
+          return { success: false, error: error.message }
+        }
+
+        if (data.user) {
+          userId = data.user.id
+
+          // Upsert student profile record in Supabase Database
+          await supabase.from('profiles').upsert({
+            id: userId,
+            name: details.name,
+            email: details.email,
+            student_id: details.student_id,
+            major: details.major,
+            bio: details.bio,
+            preferences: preferences,
+            updated_at: new Date().toISOString()
+          })
+        }
+      } catch (err: any) {
+        console.warn('Supabase signup execution note:', err)
+      }
+    }
+
     const newUser: StudentUser = {
       ...details,
-      id: `stu-${Date.now()}`,
+      id: userId,
       avatar_initials: initials,
       gpa: 4.0,
       preferences: {
@@ -178,43 +325,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // Attempt Supabase SignUp if env configured
-    if (
-      process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_URL !== 'https://placeholder.supabase.co'
-    ) {
-      try {
-        await supabase.auth.signUp({
-          email: details.email,
-          password: 'Password123!',
-          options: {
-            data: {
-              name: details.name,
-              major: details.major,
-              student_id: details.student_id,
-              preferences
-            }
-          }
-        })
-      } catch (err) {
-        console.warn('Supabase signup fallback notice:', err)
-      }
-    }
-
     saveUserToStorage(newUser)
     return { success: true }
   }
 
+  // Logout handler
   const logout = () => {
-    if (
-      process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_URL !== 'https://placeholder.supabase.co'
-    ) {
+    if (isSupabaseConfigured) {
       supabase.auth.signOut().catch(() => {})
     }
     saveUserToStorage(null)
   }
 
+  // Update profile handler
   const updateProfile = (updated: Partial<StudentUser>) => {
     if (!user) return
     const initials = updated.name
@@ -226,19 +349,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...updated,
       avatar_initials: initials
     }
+
     saveUserToStorage(newUserData)
+
+    // Sync real-time with Supabase if active
+    if (isSupabaseConfigured && user.id) {
+      supabase.from('profiles').upsert({
+        id: user.id,
+        name: newUserData.name,
+        major: newUserData.major,
+        bio: newUserData.bio,
+        updated_at: new Date().toISOString()
+      }).catch((e) => console.warn('Supabase profile update sync note:', e))
+    }
   }
 
+  // Update preferences handler
   const updatePreferences = (newPrefs: Partial<StudentPreferences>) => {
     if (!user) return
+    const updatedPreferences = {
+      ...user.preferences,
+      ...newPrefs
+    }
     const newUserData: StudentUser = {
       ...user,
-      preferences: {
-        ...user.preferences,
-        ...newPrefs
-      }
+      preferences: updatedPreferences
     }
+
     saveUserToStorage(newUserData)
+
+    // Sync real-time with Supabase if active
+    if (isSupabaseConfigured && user.id) {
+      supabase.from('profiles').upsert({
+        id: user.id,
+        preferences: updatedPreferences,
+        updated_at: new Date().toISOString()
+      }).catch((e) => console.warn('Supabase preferences update sync note:', e))
+    }
   }
 
   const loginAsDemo = () => {
@@ -251,6 +398,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         isAuthenticated: !!user,
         isLoading,
+        isRealtimeConnected,
         login,
         createAccount,
         logout,

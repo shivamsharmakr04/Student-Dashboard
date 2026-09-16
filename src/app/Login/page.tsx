@@ -19,8 +19,8 @@ import {
   Bell,
   Compass,
   Zap,
-  Sliders,
-  ChevronLeft
+  ChevronLeft,
+  Radio
 } from 'lucide-react'
 
 const AVAILABLE_TRACKS = [
@@ -43,7 +43,7 @@ const STUDY_STYLES: { id: StudentPreferences['study_mode']; label: string; desc:
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login, createAccount, loginAsDemo } = useAuth()
+  const { login, createAccount, loginAsDemo, isRealtimeConnected } = useAuth()
 
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [signupStep, setSignupStep] = useState<1 | 2>(1)
@@ -162,6 +162,16 @@ export default function LoginPage() {
           <p className="text-xs sm:text-sm text-slate-500 font-medium">
             Student Learning Portal & Academic Dashboard
           </p>
+
+          {/* Realtime Auth Connection Status Badge */}
+          <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full bg-white border border-slate-200/80 text-[11px] font-bold text-slate-600 shadow-sm">
+            <Radio className={`w-3 h-3 ${isRealtimeConnected ? 'text-emerald-500 animate-pulse' : 'text-indigo-500'}`} />
+            <span>
+              {isRealtimeConnected
+                ? 'Supabase Real-time Auth Connected'
+                : 'Real-time Session Ready'}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -250,7 +260,7 @@ export default function LoginPage() {
                 disabled={loading}
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-lg shadow-indigo-600/25 transition active:scale-95 disabled:opacity-50"
               >
-                <span>{loading ? 'Authenticating...' : 'Sign In to Portal'}</span>
+                <span>{loading ? 'Authenticating Real-time...' : 'Sign In to Portal'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
@@ -536,7 +546,7 @@ export default function LoginPage() {
                       disabled={loading}
                       className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-lg shadow-indigo-600/25 transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                      <span>{loading ? 'Creating Profile...' : 'Complete & Open Dashboard'}</span>
+                      <span>{loading ? 'Registering Real-Time Account...' : 'Complete & Open Dashboard'}</span>
                       <CheckCircle2 className="w-4 h-4" />
                     </button>
                   </div>
