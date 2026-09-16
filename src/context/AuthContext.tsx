@@ -354,13 +354,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Sync real-time with Supabase if active
     if (isSupabaseConfigured && user.id) {
-      supabase.from('profiles').upsert({
-        id: user.id,
-        name: newUserData.name,
-        major: newUserData.major,
-        bio: newUserData.bio,
-        updated_at: new Date().toISOString()
-      }).catch((e) => console.warn('Supabase profile update sync note:', e))
+      Promise.resolve(
+        supabase.from('profiles').upsert({
+          id: user.id,
+          name: newUserData.name,
+          major: newUserData.major,
+          bio: newUserData.bio,
+          updated_at: new Date().toISOString()
+        })
+      ).catch((e) => console.warn('Supabase profile update sync note:', e))
     }
   }
 
@@ -380,11 +382,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Sync real-time with Supabase if active
     if (isSupabaseConfigured && user.id) {
-      supabase.from('profiles').upsert({
-        id: user.id,
-        preferences: updatedPreferences,
-        updated_at: new Date().toISOString()
-      }).catch((e) => console.warn('Supabase preferences update sync note:', e))
+      Promise.resolve(
+        supabase.from('profiles').upsert({
+          id: user.id,
+          preferences: updatedPreferences,
+          updated_at: new Date().toISOString()
+        })
+      ).catch((e) => console.warn('Supabase preferences update sync note:', e))
     }
   }
 
