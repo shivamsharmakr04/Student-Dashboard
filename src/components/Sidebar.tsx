@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useAuth } from '@/context/AuthContext'
 import {
   LayoutDashboard,
   BookOpen,
@@ -15,11 +16,15 @@ import {
   Sparkles,
   ChevronRight,
   Menu,
-  X
+  X,
+  LogOut,
+  LogIn
 } from 'lucide-react'
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname()
+  const router = useRouter()
+  const { user, isAuthenticated, logout } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
 
   const navItems = [
@@ -30,6 +35,11 @@ export const Sidebar: React.FC = () => {
     { label: 'Analytics', icon: BarChart3, href: '/Analytics' },
     { label: 'Settings', icon: SettingsIcon, href: '/Settings' },
   ]
+
+  const handleLogout = () => {
+    logout()
+    router.push('/Login')
+  }
 
   return (
     <>
@@ -119,18 +129,38 @@ export const Sidebar: React.FC = () => {
           </div>
 
           {/* User Profile Footer */}
-          <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200/60 hover:bg-slate-100/80 transition">
-            <div className="relative">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold flex items-center justify-center text-sm shadow-sm">
-                AL
+          {isAuthenticated && user ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200/60">
+                <div className="relative">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold flex items-center justify-center text-sm shadow-sm">
+                    {user.avatar_initials || 'ST'}
+                  </div>
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-slate-900 truncate">{user.name}</p>
+                  <p className="text-[11px] text-slate-500 truncate">{user.major}</p>
+                </div>
               </div>
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full" />
+
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-slate-200 hover:border-rose-300 hover:bg-rose-50 text-slate-600 hover:text-rose-600 font-bold text-xs transition"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Log Out</span>
+              </button>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-slate-900 truncate">Alex Morgan</p>
-              <p className="text-[11px] text-slate-500 truncate">Computer Science • B.S.</p>
-            </div>
-          </div>
+          ) : (
+            <Link
+              href="/Login"
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>Sign In / Register</span>
+            </Link>
+          )}
         </div>
       </aside>
     </>

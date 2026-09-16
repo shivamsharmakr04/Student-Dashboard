@@ -1,7 +1,9 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Sidebar from '@/components/Sidebar'
+import { useAuth } from '@/context/AuthContext'
+import { StudentPreferences } from '@/types/auth'
 import {
   User,
   Bell,
@@ -14,27 +16,48 @@ import {
   GraduationCap,
   Sparkles,
   Lock,
-  Smartphone
+  Smartphone,
+  Compass,
+  Clock,
+  Target
 } from 'lucide-react'
 
+const ALL_TRACKS = [
+  'Web Development',
+  'Computer Science',
+  'Data Science & AI',
+  'UI/UX Design',
+  'Cloud Infrastructure',
+  'Mobile Development',
+  'Cybersecurity',
+  'DevOps & Automation'
+]
+
 export default function SettingsPage() {
+  const { user, updateProfile, updatePreferences } = useAuth()
+
   const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'security' | 'preferences'>('profile')
   const [savedSuccess, setSavedSuccess] = useState(false)
 
-  // Form states
+  // Profile state
   const [profile, setProfile] = useState({
-    name: 'Alex Morgan',
-    student_id: 'STU-2026-8942',
-    email: 'alex.morgan@university.edu',
-    major: 'Computer Science & Software Engineering',
-    bio: 'Passionate fullstack engineering student focused on Next.js, distributed systems, and machine learning.'
+    name: user?.name || 'Alex Morgan',
+    student_id: user?.student_id || 'STU-2026-8942',
+    email: user?.email || 'alex.morgan@university.edu',
+    major: user?.major || 'Computer Science & Software Engineering',
+    bio: user?.bio || 'Passionate fullstack engineering student focused on Next.js, distributed systems, and machine learning.'
   })
 
-  const [notifications, setNotifications] = useState({
-    email_assignments: true,
-    email_exams: true,
-    email_announcements: true,
-    push_alerts: false
+  // Preferences state
+  const [prefs, setPrefs] = useState<StudentPreferences>({
+    preferred_tracks: user?.preferences?.preferred_tracks || ['Web Development', 'Computer Science'],
+    learning_goal_hours: user?.preferences?.learning_goal_hours || 10,
+    study_mode: user?.preferences?.study_mode || 'Project-Based',
+    email_assignments: user?.preferences?.email_assignments ?? true,
+    email_exams: user?.preferences?.email_exams ?? true,
+    email_announcements: user?.preferences?.email_announcements ?? true,
+    push_alerts: user?.preferences?.push_alerts ?? false,
+    theme: user?.preferences?.theme || 'light'
   })
 
   const [security, setSecurity] = useState({
@@ -43,10 +66,46 @@ export default function SettingsPage() {
     new_password: ''
   })
 
+  // Sync state if user context loads/changes
+  useEffect(() => {
+    if (user) {
+      setProfile({
+        name: user.name,
+        student_id: user.student_id,
+        email: user.email,
+        major: user.major,
+        bio: user.bio
+      })
+      if (user.preferences) {
+        setPrefs(user.preferences)
+      }
+    }
+  }, [user])
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
+
+    updateProfile({
+      name: profile.name,
+      email: profile.email,
+      major: profile.major,
+      bio: profile.bio
+    })
+
+    updatePreferences(prefs)
+
     setSavedSuccess(true)
     setTimeout(() => setSavedSuccess(false), 3000)
+  }
+
+  const toggleTrack = (track: string) => {
+    setPrefs((prev) => {
+      const exists = prev.preferred_tracks.includes(track)
+      const updated = exists
+        ? prev.preferred_tracks.filter((t) => t !== track)
+        : [...prev.preferred_tracks, track]
+      return { ...prev, preferred_tracks: updated }
+    })
   }
 
   return (
@@ -69,7 +128,7 @@ export default function SettingsPage() {
               </span>
             </div>
             <p className="text-xs md:text-sm text-slate-500">
-              Manage your personal student profile, notification alerts, and security preferences
+              Manage your personal student profile, learning preferences, and security settings
             </p>
           </div>
         </header>
@@ -78,7 +137,7 @@ export default function SettingsPage() {
         {savedSuccess && (
           <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 flex items-center gap-3 shadow-sm animate-fade-in">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-            <p className="text-xs font-bold">Your settings have been saved successfully!</p>
+            <p className="text-xs font-bold">Your student profile and preferences have been updated!</p>
           </div>
         )}
 
@@ -88,9 +147,9 @@ export default function SettingsPage() {
           <div className="space-y-2">
             {[
               { id: 'profile', label: 'Student Profile', icon: User },
+              { id: 'preferences', label: 'Learning Preferences', icon: Compass },
               { id: 'notifications', label: 'Notifications', icon: Bell },
               { id: 'security', label: 'Account Security', icon: Shield },
-              { id: 'preferences', label: 'System Preferences', icon: Palette },
             ].map((tab) => {
               const Icon = tab.icon
               const isSelected = activeTab === tab.id
@@ -119,17 +178,17 @@ export default function SettingsPage() {
               {activeTab === 'profile' && (
                 <div className="space-y-6">
                   <div className="pb-4 border-b border-slate-100">
-                    <h3 className="text-base font-bold text-slate-900">Personal Information</h3>
-                    <p className="text-xs text-slate-500">Update your student details and university profile info</p>
+                    <h3 className="text-base font-bold text-slate-900">Personal Student Profile</h3>
+                    <p className="text-xs text-slate-500">Update your identity and university details</p>
                   </div>
 
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-black text-xl flex items-center justify-center shadow-md">
-                      AL
+                      {user?.avatar_initials || 'ST'}
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900">Alex Morgan</h4>
-                      <p className="text-xs text-slate-500">B.S. Computer Science • Year 3</p>
+                      <h4 className="text-sm font-bold text-slate-900">{profile.name}</h4>
+                      <p className="text-xs text-slate-500">{profile.major}</p>
                     </div>
                   </div>
 
@@ -187,7 +246,108 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {/* Tab 2: Notifications */}
+              {/* Tab 2: Learning Preferences */}
+              {activeTab === 'preferences' && (
+                <div className="space-y-6">
+                  <div className="pb-4 border-b border-slate-100">
+                    <h3 className="text-base font-bold text-slate-900">Customized Learning Preferences</h3>
+                    <p className="text-xs text-slate-500">Tailor recommended courses, weekly targets, and study styles</p>
+                  </div>
+
+                  {/* Preferred Tracks */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <Compass className="w-4 h-4 text-indigo-600" />
+                      <span>Preferred Learning Tracks</span>
+                    </label>
+
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {ALL_TRACKS.map((track) => {
+                        const isSelected = prefs.preferred_tracks.includes(track)
+                        return (
+                          <button
+                            type="button"
+                            key={track}
+                            onClick={() => toggleTrack(track)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                              isSelected
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {isSelected ? '✓ ' : '+ '}
+                            {track}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Weekly Study Pace Goal */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-amber-500" />
+                      <span>Weekly Target Study Pace</span>
+                    </label>
+
+                    <div className="grid grid-cols-4 gap-2">
+                      {[5, 10, 15, 20].map((hours) => {
+                        const isSelected = prefs.learning_goal_hours === hours
+                        return (
+                          <button
+                            type="button"
+                            key={hours}
+                            onClick={() => setPrefs({ ...prefs, learning_goal_hours: hours })}
+                            className={`py-2 rounded-xl text-xs font-bold border transition ${
+                              isSelected
+                                ? 'bg-amber-500 text-white border-amber-500 shadow-md'
+                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {hours} hrs/wk
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Preferred Study Mode */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <Target className="w-4 h-4 text-emerald-600" />
+                      <span>Primary Learning Style</span>
+                    </label>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {[
+                        { id: 'Project-Based', label: '🚀 Project-Based', desc: 'Build software projects & repos' },
+                        { id: 'Exam Prep', label: '📚 Exam Prep', desc: 'Practice tests & core theory' },
+                        { id: 'Concept Mastery', label: '🧠 Deep Concepts', desc: 'Step-by-step algorithms & theory' },
+                        { id: 'Fast-Track', label: '⚡ Fast-Track', desc: 'Accelerated concise modules' }
+                      ].map((style) => {
+                        const isSelected = prefs.study_mode === style.id
+                        return (
+                          <button
+                            type="button"
+                            key={style.id}
+                            onClick={() => setPrefs({ ...prefs, study_mode: style.id as any })}
+                            className={`p-3 text-left rounded-xl border transition ${
+                              isSelected
+                                ? 'bg-indigo-50 border-indigo-500 text-indigo-900 shadow-sm font-bold'
+                                : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            <p className="text-xs">{style.label}</p>
+                            <p className="text-[10px] text-slate-500 mt-0.5">{style.desc}</p>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 3: Notifications */}
               {activeTab === 'notifications' && (
                 <div className="space-y-6">
                   <div className="pb-4 border-b border-slate-100">
@@ -203,8 +363,8 @@ export default function SettingsPage() {
                       </div>
                       <input
                         type="checkbox"
-                        checked={notifications.email_assignments}
-                        onChange={(e) => setNotifications({ ...notifications, email_assignments: e.target.checked })}
+                        checked={prefs.email_assignments}
+                        onChange={(e) => setPrefs({ ...prefs, email_assignments: e.target.checked })}
                         className="w-5 h-5 accent-indigo-600 rounded cursor-pointer"
                       />
                     </div>
@@ -216,8 +376,8 @@ export default function SettingsPage() {
                       </div>
                       <input
                         type="checkbox"
-                        checked={notifications.email_exams}
-                        onChange={(e) => setNotifications({ ...notifications, email_exams: e.target.checked })}
+                        checked={prefs.email_exams}
+                        onChange={(e) => setPrefs({ ...prefs, email_exams: e.target.checked })}
                         className="w-5 h-5 accent-indigo-600 rounded cursor-pointer"
                       />
                     </div>
@@ -225,12 +385,12 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
                       <div>
                         <h4 className="font-bold text-slate-900">Department Announcements</h4>
-                        <p className="text-slate-500">Receive news and updates from the Computer Science faculty.</p>
+                        <p className="text-slate-500">Receive news and updates from your faculty.</p>
                       </div>
                       <input
                         type="checkbox"
-                        checked={notifications.email_announcements}
-                        onChange={(e) => setNotifications({ ...notifications, email_announcements: e.target.checked })}
+                        checked={prefs.email_announcements}
+                        onChange={(e) => setPrefs({ ...prefs, email_announcements: e.target.checked })}
                         className="w-5 h-5 accent-indigo-600 rounded cursor-pointer"
                       />
                     </div>
@@ -238,7 +398,7 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {/* Tab 3: Security */}
+              {/* Tab 4: Security */}
               {activeTab === 'security' && (
                 <div className="space-y-6">
                   <div className="pb-4 border-b border-slate-100">
@@ -286,21 +446,6 @@ export default function SettingsPage() {
                         />
                       </div>
                     </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Tab 4: Preferences */}
-              {activeTab === 'preferences' && (
-                <div className="space-y-6">
-                  <div className="pb-4 border-b border-slate-100">
-                    <h3 className="text-base font-bold text-slate-900">System Preferences</h3>
-                    <p className="text-xs text-slate-500">Theme and layout customizations</p>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs space-y-2">
-                    <h4 className="font-bold text-slate-900">Interface Theme</h4>
-                    <p className="text-slate-500">Currently active: Professional Light Slate Theme.</p>
                   </div>
                 </div>
               )}

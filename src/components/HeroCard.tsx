@@ -1,9 +1,17 @@
 'use client'
 
 import React from 'react'
-import { Sparkles, ArrowRight, Award, Target, BookOpen } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
+import { Sparkles, ArrowRight, Award, Target, BookOpen, Compass } from 'lucide-react'
 
 export const HeroCard: React.FC = () => {
+  const { user } = useAuth()
+
+  const studentName = user?.name || 'Alex Morgan'
+  const goalHours = user?.preferences?.learning_goal_hours || 10
+  const studyMode = user?.preferences?.study_mode || 'Project-Based'
+  const tracks = user?.preferences?.preferred_tracks || ['Web Development', 'Computer Science']
+
   return (
     <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-blue-600 text-white p-6 md:p-8 shadow-xl shadow-indigo-600/15 border border-indigo-500/30">
       {/* Background Decorative Glow Elements */}
@@ -12,17 +20,24 @@ export const HeroCard: React.FC = () => {
 
       <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="space-y-3 max-w-xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 border border-white/25 text-white text-xs font-semibold backdrop-blur-md">
-            <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
-            <span>Spring Semester 2026</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 border border-white/25 text-white text-xs font-semibold backdrop-blur-md">
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+              <span>Spring Semester 2026</span>
+            </div>
+
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/30 border border-indigo-300/30 text-indigo-100 text-xs font-medium backdrop-blur-md">
+              <Compass className="w-3.5 h-3.5 text-indigo-200" />
+              <span>Style: {studyMode}</span>
+            </div>
           </div>
 
           <h1 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight leading-tight">
-            Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-100 to-white">Alex Morgan!</span> 👋
+            Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-100 to-white">{studentName}!</span> 👋
           </h1>
 
           <p className="text-indigo-100/90 text-sm md:text-base leading-relaxed font-normal">
-            You&apos;ve completed <strong className="text-white font-bold">64%</strong> of your weekly learning goal. Keep up the momentum for your upcoming Data Structures midterm!
+            You&apos;ve completed <strong className="text-white font-bold">64%</strong> of your target <strong className="text-amber-200 font-bold">{goalHours} hrs/week</strong> learning goal. Customized tracks: <span className="font-semibold text-white">{tracks.slice(0, 2).join(', ')}</span>.
           </p>
 
           <div className="flex flex-wrap items-center gap-4 pt-2">
@@ -37,7 +52,7 @@ export const HeroCard: React.FC = () => {
 
             <div className="flex items-center gap-2 text-xs text-white bg-white/15 px-3 py-2 rounded-xl border border-white/20 backdrop-blur-md font-medium">
               <Target className="w-4 h-4 text-amber-300" />
-              <span>Target: 2 hours today</span>
+              <span>Goal: {goalHours} hrs/week</span>
             </div>
           </div>
         </div>
@@ -49,7 +64,7 @@ export const HeroCard: React.FC = () => {
               <span className="text-xs font-semibold">Overall GPA</span>
               <Award className="w-4 h-4 text-amber-300" />
             </div>
-            <p className="text-2xl font-black text-white">3.92</p>
+            <p className="text-2xl font-black text-white">{user?.gpa ? user.gpa.toFixed(2) : '3.92'}</p>
             <p className="text-[11px] text-amber-200 font-bold">Top 5% of class</p>
           </div>
 
