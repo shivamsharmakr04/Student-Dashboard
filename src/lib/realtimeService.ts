@@ -65,8 +65,19 @@ export function useRealtimeCourses() {
 
     async function loadCourses() {
       let currentCourses = getStored<Course[] | null>(userStorageKey, null)
+
       if (!currentCourses || currentCourses.length === 0) {
         currentCourses = generateUserCourses(currentUser)
+        setStored(userStorageKey, currentCourses)
+      } else if (currentUser.email?.toLowerCase() !== 'alex.morgan@university.edu') {
+        // Dynamic re-sync check: merge fresh courses for newly added tracks while preserving progress!
+        const freshGen = generateUserCourses(currentUser)
+        const existingMap = new Map(currentCourses.map((c) => [c.title, c]))
+        const merged = freshGen.map((fresh) => {
+          const existing = existingMap.get(fresh.title)
+          return existing ? existing : fresh
+        })
+        currentCourses = merged
         setStored(userStorageKey, currentCourses)
       }
 
@@ -113,7 +124,7 @@ export function useRealtimeCourses() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [user, userStorageKey])
+  }, [user, userStorageKey, JSON.stringify(user?.preferences?.preferred_tracks)])
 
   const updateCourseProgress = async (courseId: string, newProgress: number, newCompletedLessons?: number) => {
     setCourses((prev) => {

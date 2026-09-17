@@ -2,7 +2,7 @@ import { Course } from '@/types/course'
 import { StudentUser } from '@/types/auth'
 
 export const MASTER_COURSE_CATALOG: Record<string, Omit<Course, 'id' | 'user_id'>> = {
-  // Web Development Track
+  // 1. Web Development Track
   'nextjs-architecture': {
     title: 'Advanced React & Next.js 16 Architecture',
     category: 'Web Development',
@@ -37,7 +37,7 @@ export const MASTER_COURSE_CATALOG: Record<string, Omit<Course, 'id' | 'user_id'
     description: 'Generics, conditional types, AST parsing, and strict type safety for large frontend codebases.'
   },
 
-  // Computer Science Track
+  // 2. Computer Science Track
   'dsa-python': {
     title: 'Data Structures & Algorithms in Python',
     category: 'Computer Science',
@@ -61,7 +61,7 @@ export const MASTER_COURSE_CATALOG: Record<string, Omit<Course, 'id' | 'user_id'
     description: 'Process scheduling, memory virtual allocation, multithreading locks, and IPC system calls.'
   },
 
-  // Data Science & AI Track
+  // 3. Data Science & AI Track
   'ml-engineering': {
     title: 'Machine Learning Engineering Fundamentals',
     category: 'Data Science & AI',
@@ -85,7 +85,7 @@ export const MASTER_COURSE_CATALOG: Record<string, Omit<Course, 'id' | 'user_id'
     description: 'Attention mechanisms, LLM fine-tuning, backpropagation calculus, and GPU memory optimization.'
   },
 
-  // UI/UX Design Track
+  // 4. UI/UX Design Track
   'design-systems': {
     title: 'UI/UX Design Systems & Micro-Interactions',
     category: 'UI/UX Design',
@@ -109,9 +109,9 @@ export const MASTER_COURSE_CATALOG: Record<string, Omit<Course, 'id' | 'user_id'
     description: 'Conducting user interviews, card sorting, wireframing, and data-driven usability testing.'
   },
 
-  // Cloud Infrastructure Track
+  // 5. Cloud Infrastructure Track
   'cloud-devops': {
-    title: 'Cloud Infrastructure & DevOps Mastery',
+    title: 'Cloud Infrastructure & Kubernetes Architecture',
     category: 'Cloud Infrastructure',
     progress: 25,
     icon_name: 'Cloud',
@@ -122,7 +122,7 @@ export const MASTER_COURSE_CATALOG: Record<string, Omit<Course, 'id' | 'user_id'
     description: 'Docker containerization, Kubernetes orchestration, CI/CD automation, and Terraform.'
   },
   'aws-cloud-architecture': {
-    title: 'AWS Cloud Solutions & Microservices',
+    title: 'AWS Cloud Solutions & Serverless Services',
     category: 'Cloud Infrastructure',
     progress: 55,
     icon_name: 'Cloud',
@@ -133,7 +133,20 @@ export const MASTER_COURSE_CATALOG: Record<string, Omit<Course, 'id' | 'user_id'
     description: 'Designing fault-tolerant VPC networks, Serverless Lambda pipelines, and S3 security.'
   },
 
-  // Cybersecurity Track
+  // 6. Mobile Development Track
+  'flutter-mobile-dev': {
+    title: 'Cross-Platform Mobile Apps with Flutter',
+    category: 'Mobile Development',
+    progress: 50,
+    icon_name: 'Smartphone',
+    instructor: 'Lucas Silva',
+    total_lessons: 20,
+    completed_lessons: 10,
+    color_gradient: 'from-blue-500 to-teal-500',
+    description: 'Native iOS & Android compilation, reactive state management, and mobile UI animation.'
+  },
+
+  // 7. Cybersecurity Track
   'ethical-hacking': {
     title: 'Ethical Hacking & Network Defense',
     category: 'Cybersecurity',
@@ -146,17 +159,17 @@ export const MASTER_COURSE_CATALOG: Record<string, Omit<Course, 'id' | 'user_id'
     description: 'Penetration testing, packet inspection, cryptography fundamentals, and incident response.'
   },
 
-  // Mobile Development Track
-  'flutter-mobile-dev': {
-    title: 'Cross-Platform Mobile Apps with Flutter',
-    category: 'Mobile Development',
-    progress: 50,
-    icon_name: 'Smartphone',
-    instructor: 'Lucas Silva',
-    total_lessons: 20,
-    completed_lessons: 10,
-    color_gradient: 'from-blue-500 to-teal-500',
-    description: 'Native iOS & Android compilation, reactive state management, and mobile UI animation.'
+  // 8. DevOps & Automation Track
+  'devops-automation': {
+    title: 'CI/CD Pipeline Automation & GitOps',
+    category: 'DevOps & Automation',
+    progress: 45,
+    icon_name: 'Cloud',
+    instructor: 'Marcus Vance',
+    total_lessons: 18,
+    completed_lessons: 8,
+    color_gradient: 'from-blue-600 to-cyan-600',
+    description: 'Automating build pipelines, GitHub Actions workflows, ArgoCD, and Kubernetes GitOps deployments.'
   }
 }
 
@@ -249,14 +262,14 @@ export function generateUserCourses(user: StudentUser): Course[] {
   // Filter courses that match the user's selected study tracks or major
   let matched = catalogEntries.filter(([_, course]) => {
     const catMatch = userTracks.some(
-      (t) => t.toLowerCase() === course.category?.toLowerCase()
+      (t) => t.toLowerCase().trim() === course.category?.toLowerCase().trim()
     )
     const majorMatch = major.toLowerCase().includes(course.category?.toLowerCase() || '')
     return catMatch || majorMatch
   })
 
-  // If fewer than 3 matched, pick fallback mix from catalog
-  if (matched.length < 3) {
+  // If no direct match found, pick fallback mix from catalog
+  if (matched.length === 0) {
     matched = catalogEntries.slice(0, 4)
   }
 
