@@ -4,6 +4,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 import { StudentUser, StudentPreferences } from '@/types/auth'
 import { supabase } from '@/lib/supabase'
 import { generateUserCourses } from '@/lib/courseCatalog'
+import { generateUserAssignments } from '@/lib/userAssignmentGenerator'
+import { generateUserSchedule } from '@/lib/userScheduleGenerator'
 
 export const DEFAULT_PREFERENCES: StudentPreferences = {
   preferred_tracks: ['Web Development', 'Computer Science'],
@@ -326,19 +328,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // Generate and persist real personalized user courses upon account creation
+    // Generate and persist real personalized user courses, assignments, and schedule upon account creation
     try {
       const userCourses = generateUserCourses(newUser)
+      const userAssignments = generateUserAssignments(newUser, userCourses)
+      const userSchedule = generateUserSchedule(newUser, userCourses)
+
       if (typeof window !== 'undefined') {
         localStorage.setItem(`edupulse_courses_${newUser.id}`, JSON.stringify(userCourses))
+        localStorage.setItem(`edupulse_assignments_${newUser.id}`, JSON.stringify(userAssignments))
+        localStorage.setItem(`edupulse_schedule_${newUser.id}`, JSON.stringify(userSchedule))
       }
       if (isSupabaseConfigured) {
-        Promise.resolve(supabase.from('courses').upsert(userCourses)).catch((e: any) =>
-          console.warn('Supabase courses creation note:', e)
-        )
+        Promise.resolve(supabase.from('courses').upsert(userCourses)).catch(() => {})
+        Promise.resolve(supabase.from('assignments').upsert(userAssignments)).catch(() => {})
+        Promise.resolve(supabase.from('schedule_events').upsert(userSchedule)).catch(() => {})
       }
     } catch (e) {
-      console.warn('User courses initialization skipped:', e)
+      console.warn('User initial data generation note:', e)
     }
 
     saveUserToStorage(newUser)

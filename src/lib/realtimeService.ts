@@ -5,20 +5,16 @@ import { supabase } from '@/lib/supabase'
 import { Course } from '@/types/course'
 import { Assignment } from '@/types/assignment'
 import { ScheduleEvent } from '@/types/schedule'
-import { MOCK_ASSIGNMENTS } from '@/lib/assignmentData'
-import { MOCK_SCHEDULE_EVENTS } from '@/lib/scheduleData'
 import { useAuth } from '@/context/AuthContext'
 import { generateUserCourses } from '@/lib/courseCatalog'
+import { generateUserAssignments } from '@/lib/userAssignmentGenerator'
+import { generateUserSchedule } from '@/lib/userScheduleGenerator'
 
 const isSupabaseConfigured =
   Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
   process.env.NEXT_PUBLIC_SUPABASE_URL !== 'https://placeholder.supabase.co' &&
   Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) &&
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY !== 'placeholder-key'
-
-// Storage Keys
-const STORAGE_ASSIGNMENTS = 'edupulse_assignments'
-const STORAGE_SCHEDULE = 'edupulse_schedule'
 
 // Helper for local storage persistence
 function getStored<T>(key: string, fallback: T): T {
@@ -70,7 +66,6 @@ export function useRealtimeCourses() {
         currentCourses = generateUserCourses(currentUser)
         setStored(userStorageKey, currentCourses)
       } else if (currentUser.email?.toLowerCase() !== 'alex.morgan@university.edu') {
-        // Dynamic re-sync check: merge fresh courses for newly added tracks while preserving progress!
         const freshGen = generateUserCourses(currentUser)
         const existingMap = new Map(currentCourses.map((c) => [c.title, c]))
         const merged = freshGen.map((fresh) => {
@@ -107,7 +102,6 @@ export function useRealtimeCourses() {
 
     if (!isSupabaseConfigured) return
 
-    // Real-Time Supabase WebSocket Channel for Courses (User-scoped)
     const channel = supabase
       .channel(`realtime_courses_${currentUser.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'courses', filter: `user_id=eq.${currentUser.id}` }, (payload) => {
@@ -175,19 +169,49 @@ export function useRealtimeCourses() {
 // 2. REAL-TIME ASSIGNMENTS HOOK & API
 // ==========================================
 export function useRealtimeAssignments() {
-  const [assignments, setAssignments] = useState<Assignment[]>(() =>
-    getStored(STORAGE_ASSIGNMENTS, MOCK_ASSIGNMENTS)
-  )
+  const { user } = useAuth()
+  const { courses } = useRealtimeCourses()
+  const userId = user?.id || 'demo-student-001'
+  const userStorageKey = `edupulse_assignments_${userId}`
+
+  const [assignments, setAssignments] = useState<Assignment[]>(() => {
+    if (!user) return []
+    const stored = getStored<Assignment[] | null>(userStorageKey, null)
+    if (stored && stored.length > 0) return stored
+    return generateUserAssignments(user, courses)
+  })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!user) {
+      setAssignments([])
+      setLoading(false)
+      return
+    }
+
+    const currentUser = user
+
     async function loadAssignments() {
+      let currentAssignments = getStored<Assignment[] | null>(userStorageKey, null)
+      if (!currentAssignments || currentAssignments.length === 0) {
+        currentAssignments = generateUserAssignments(currentUser, courses)
+        setStored(userStorageKey, currentAssignments)
+      }
+
+      setAssignments(currentAssignments)
+
       if (isSupabaseConfigured) {
         try {
-          const { data, error } = await supabase.from('assignments').select('*')
+          const { data, error } = await supabase
+            .from('assignments')
+            .select('*')
+            .eq('user_id', currentUser.id)
+
           if (!error && data && data.length > 0) {
             setAssignments(data as Assignment[])
-            setStored(STORAGE_ASSIGNMENTS, data)
+            setStored(userStorageKey, data)
+          } else if (!error && (!data || data.length === 0)) {
+            await supabase.from('assignments').upsert(currentAssignments)
           }
         } catch (e) {
           console.warn('Supabase fetch assignments failed:', e)
@@ -200,10 +224,9 @@ export function useRealtimeAssignments() {
 
     if (!isSupabaseConfigured) return
 
-    // Real-Time Supabase WebSocket Channel for Assignments
     const channel = supabase
-      .channel('realtime_assignments')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'assignments' }, (payload) => {
+      .channel(`realtime_assignments_${currentUser.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'assignments', filter: `user_id=eq.${currentUser.id}` }, (payload) => {
         if (payload.eventType === 'INSERT') {
           setAssignments((prev) => [payload.new as Assignment, ...prev])
         } else if (payload.eventType === 'UPDATE') {
@@ -219,7 +242,7 @@ export function useRealtimeAssignments() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [])
+  }, [user, courses, userStorageKey])
 
   const submitAssignment = async (id: string) => {
     const subDate = `Today at ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
@@ -234,16 +257,19 @@ export function useRealtimeAssignments() {
             }
           : item
       )
-      setStored(STORAGE_ASSIGNMENTS, updated)
+      if (user?.id) {
+        setStored(userStorageKey, updated)
+      }
       return updated
     })
 
-    if (isSupabaseConfigured) {
+    if (isSupabaseConfigured && user?.id) {
       try {
         await supabase
           .from('assignments')
           .update({ status: 'submitted', submission_date: subDate })
           .eq('id', id)
+          .eq('user_id', user.id)
       } catch (e) {}
     }
   }
@@ -255,19 +281,49 @@ export function useRealtimeAssignments() {
 // 3. REAL-TIME SCHEDULE HOOK & API
 // ==========================================
 export function useRealtimeSchedule() {
-  const [events, setEvents] = useState<ScheduleEvent[]>(() =>
-    getStored(STORAGE_SCHEDULE, MOCK_SCHEDULE_EVENTS)
-  )
+  const { user } = useAuth()
+  const { courses } = useRealtimeCourses()
+  const userId = user?.id || 'demo-student-001'
+  const userStorageKey = `edupulse_schedule_${userId}`
+
+  const [events, setEvents] = useState<ScheduleEvent[]>(() => {
+    if (!user) return []
+    const stored = getStored<ScheduleEvent[] | null>(userStorageKey, null)
+    if (stored && stored.length > 0) return stored
+    return generateUserSchedule(user, courses)
+  })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!user) {
+      setEvents([])
+      setLoading(false)
+      return
+    }
+
+    const currentUser = user
+
     async function loadSchedule() {
+      let currentEvents = getStored<ScheduleEvent[] | null>(userStorageKey, null)
+      if (!currentEvents || currentEvents.length === 0) {
+        currentEvents = generateUserSchedule(currentUser, courses)
+        setStored(userStorageKey, currentEvents)
+      }
+
+      setEvents(currentEvents)
+
       if (isSupabaseConfigured) {
         try {
-          const { data, error } = await supabase.from('schedule_events').select('*')
+          const { data, error } = await supabase
+            .from('schedule_events')
+            .select('*')
+            .eq('user_id', currentUser.id)
+
           if (!error && data && data.length > 0) {
             setEvents(data as ScheduleEvent[])
-            setStored(STORAGE_SCHEDULE, data)
+            setStored(userStorageKey, data)
+          } else if (!error && (!data || data.length === 0)) {
+            await supabase.from('schedule_events').upsert(currentEvents)
           }
         } catch (e) {
           console.warn('Supabase fetch schedule failed:', e)
@@ -280,10 +336,9 @@ export function useRealtimeSchedule() {
 
     if (!isSupabaseConfigured) return
 
-    // Real-Time Supabase WebSocket Channel for Schedule
     const channel = supabase
-      .channel('realtime_schedule')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_events' }, (payload) => {
+      .channel(`realtime_schedule_${currentUser.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_events', filter: `user_id=eq.${currentUser.id}` }, (payload) => {
         if (payload.eventType === 'INSERT') {
           setEvents((prev) => [payload.new as ScheduleEvent, ...prev])
         } else if (payload.eventType === 'UPDATE') {
@@ -299,23 +354,25 @@ export function useRealtimeSchedule() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [])
+  }, [user, courses, userStorageKey])
 
   const addScheduleEvent = async (event: Omit<ScheduleEvent, 'id'>) => {
     const newEvent: ScheduleEvent = {
       ...event,
-      id: `evt-${Date.now()}`
+      id: `evt-${user?.id || 'demo'}-${Date.now()}`
     }
 
     setEvents((prev) => {
       const updated = [newEvent, ...prev]
-      setStored(STORAGE_SCHEDULE, updated)
+      if (user?.id) {
+        setStored(userStorageKey, updated)
+      }
       return updated
     })
 
-    if (isSupabaseConfigured) {
+    if (isSupabaseConfigured && user?.id) {
       try {
-        await supabase.from('schedule_events').insert([newEvent])
+        await supabase.from('schedule_events').insert([{ ...newEvent, user_id: user.id }])
       } catch (e) {}
     }
   }
