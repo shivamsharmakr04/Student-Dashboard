@@ -5,9 +5,10 @@ import { supabase } from '@/lib/supabase'
 import { Course } from '@/types/course'
 import { Assignment } from '@/types/assignment'
 import { ScheduleEvent } from '@/types/schedule'
-import { MOCK_COURSES } from '@/lib/supabase'
 import { MOCK_ASSIGNMENTS } from '@/lib/assignmentData'
 import { MOCK_SCHEDULE_EVENTS } from '@/lib/scheduleData'
+import { useAuth } from '@/context/AuthContext'
+import { generateUserCourses } from '@/lib/courseCatalog'
 
 const isSupabaseConfigured =
   Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
@@ -16,7 +17,6 @@ const isSupabaseConfigured =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY !== 'placeholder-key'
 
 // Storage Keys
-const STORAGE_COURSES = 'edupulse_courses'
 const STORAGE_ASSIGNMENTS = 'edupulse_assignments'
 const STORAGE_SCHEDULE = 'edupulse_schedule'
 
@@ -42,17 +42,48 @@ function setStored<T>(key: string, value: T) {
 // 1. REAL-TIME COURSES HOOK & API
 // ==========================================
 export function useRealtimeCourses() {
-  const [courses, setCourses] = useState<Course[]>(() => getStored(STORAGE_COURSES, MOCK_COURSES))
+  const { user } = useAuth()
+  const userId = user?.id || 'demo-student-001'
+  const userStorageKey = `edupulse_courses_${userId}`
+
+  const [courses, setCourses] = useState<Course[]>(() => {
+    if (!user) return []
+    const stored = getStored<Course[] | null>(userStorageKey, null)
+    if (stored && stored.length > 0) return stored
+    return generateUserCourses(user)
+  })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!user) {
+      setCourses([])
+      setLoading(false)
+      return
+    }
+
+    const currentUser = user
+
     async function loadCourses() {
+      let currentCourses = getStored<Course[] | null>(userStorageKey, null)
+      if (!currentCourses || currentCourses.length === 0) {
+        currentCourses = generateUserCourses(currentUser)
+        setStored(userStorageKey, currentCourses)
+      }
+
+      setCourses(currentCourses)
+
       if (isSupabaseConfigured) {
         try {
-          const { data, error } = await supabase.from('courses').select('*')
+          const { data, error } = await supabase
+            .from('courses')
+            .select('*')
+            .eq('user_id', currentUser.id)
+
           if (!error && data && data.length > 0) {
             setCourses(data as Course[])
-            setStored(STORAGE_COURSES, data)
+            setStored(userStorageKey, data)
+          } else if (!error && (!data || data.length === 0)) {
+            await supabase.from('courses').upsert(currentCourses)
           }
         } catch (e) {
           console.warn('Supabase fetch courses failed:', e)
@@ -65,10 +96,10 @@ export function useRealtimeCourses() {
 
     if (!isSupabaseConfigured) return
 
-    // Real-Time Supabase WebSocket Channel for Courses
+    // Real-Time Supabase WebSocket Channel for Courses (User-scoped)
     const channel = supabase
-      .channel('realtime_courses')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'courses' }, (payload) => {
+      .channel(`realtime_courses_${currentUser.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'courses', filter: `user_id=eq.${currentUser.id}` }, (payload) => {
         if (payload.eventType === 'INSERT') {
           setCourses((prev) => [payload.new as Course, ...prev])
         } else if (payload.eventType === 'UPDATE') {
@@ -82,18 +113,46 @@ export function useRealtimeCourses() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [])
+  }, [user, userStorageKey])
 
-  const updateCourseProgress = async (courseId: string, progress: number) => {
+  const updateCourseProgress = async (courseId: string, newProgress: number, newCompletedLessons?: number) => {
     setCourses((prev) => {
-      const updated = prev.map((c) => (c.id === courseId ? { ...c, progress } : c))
-      setStored(STORAGE_COURSES, updated)
+      const updated = prev.map((c) => {
+        if (c.id === courseId) {
+          const total = c.total_lessons || 20
+          const completed =
+            newCompletedLessons !== undefined
+              ? newCompletedLessons
+              : Math.min(total, Math.round((newProgress / 100) * total))
+          return {
+            ...c,
+            progress: Math.min(100, Math.max(0, newProgress)),
+            completed_lessons: completed
+          }
+        }
+        return c
+      })
+      if (user?.id) {
+        setStored(userStorageKey, updated)
+      }
       return updated
     })
 
-    if (isSupabaseConfigured) {
+    if (isSupabaseConfigured && user?.id) {
       try {
-        await supabase.from('courses').update({ progress }).eq('id', courseId)
+        const targetCourse = courses.find((c) => c.id === courseId)
+        if (targetCourse) {
+          const total = targetCourse.total_lessons || 20
+          const completed =
+            newCompletedLessons !== undefined
+              ? newCompletedLessons
+              : Math.min(total, Math.round((newProgress / 100) * total))
+          await supabase
+            .from('courses')
+            .update({ progress: newProgress, completed_lessons: completed })
+            .eq('id', courseId)
+            .eq('user_id', user.id)
+        }
       } catch (e) {}
     }
   }

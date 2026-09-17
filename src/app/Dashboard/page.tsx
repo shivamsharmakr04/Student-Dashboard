@@ -2,9 +2,8 @@ import React from 'react'
 import Sidebar from '@/components/Sidebar'
 import HeroCard from '@/components/HeroCard'
 import ActivityCard from '@/components/ActivityCard'
-import CourseCard from '@/components/Course'
-import { getCourses } from '@/lib/supabase'
-import { Search, Bell, Filter, Calendar, Clock, ArrowUpRight, BookMarked } from 'lucide-react'
+import EnrolledCoursesSection from '@/components/EnrolledCoursesSection'
+import { Search, Bell, Calendar, Clock, ArrowUpRight } from 'lucide-react'
 
 export const metadata = {
   title: 'Student Dashboard | EduPulse',
@@ -12,8 +11,6 @@ export const metadata = {
 }
 
 export default async function DashboardPage() {
-  const courses = await getCourses()
-
   const upcomingDeadlines = [
     {
       title: 'Data Structures Midterm Exam',
@@ -83,34 +80,8 @@ export default async function DashboardPage() {
 
         {/* Main Content Grid: Courses (2/3) + Upcoming Deadlines (1/3) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Active Courses Section */}
-          <div className="lg:col-span-2 space-y-6" id="courses">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-                  <BookMarked className="w-5 h-5 text-indigo-600" />
-                  <span>Enrolled Courses</span>
-                  <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200/60">
-                    {courses.length} Active
-                  </span>
-                </h3>
-              </div>
-
-              <div className="flex items-center gap-2 text-xs">
-                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium shadow-sm">
-                  <Filter className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Filter</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Course Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {courses.map((course) => (
-                <CourseCard key={course.id} course={course} />
-              ))}
-            </div>
-          </div>
+          {/* Active Courses Section (Dynamic User Courses) */}
+          <EnrolledCoursesSection />
 
           {/* Right Sidebar Widget: Upcoming Deadlines */}
           <div className="space-y-6" id="schedule">

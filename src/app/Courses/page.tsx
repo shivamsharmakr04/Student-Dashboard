@@ -82,7 +82,7 @@ export default function CoursesPage() {
             </div>
             <div>
               <p className="text-xs font-semibold text-slate-500">Active Courses</p>
-              <p className="text-xl font-extrabold text-slate-900">{courses.length} Courses</p>
+              <p className="text-xl font-extrabold text-slate-900">{courses.length} Enrolled</p>
             </div>
           </div>
 
@@ -92,7 +92,10 @@ export default function CoursesPage() {
             </div>
             <div>
               <p className="text-xs font-semibold text-slate-500">Completed Lessons</p>
-              <p className="text-xl font-extrabold text-slate-900">68 of 108 Lessons</p>
+              <p className="text-xl font-extrabold text-slate-900">
+                {courses.reduce((acc, c) => acc + (c.completed_lessons || 0), 0)} of{' '}
+                {courses.reduce((acc, c) => acc + (c.total_lessons || 20), 0)} Lessons
+              </p>
             </div>
           </div>
 
@@ -102,7 +105,7 @@ export default function CoursesPage() {
             </div>
             <div>
               <p className="text-xs font-semibold text-slate-500">Registered Credits</p>
-              <p className="text-xl font-extrabold text-slate-900">18 Academic Credits</p>
+              <p className="text-xl font-extrabold text-slate-900">{courses.length * 3} Academic Credits</p>
             </div>
           </div>
         </div>
@@ -184,7 +187,7 @@ export default function CoursesPage() {
                   <div className="flex justify-between text-xs text-slate-500">
                     <span>Lessons Progress</span>
                     <span className="font-semibold text-slate-700">
-                      {course.completed_lessons} / {course.total_lessons} Completed
+                      {course.completed_lessons || 0} / {course.total_lessons || 20} Completed
                     </span>
                   </div>
                   <ProgressBar progress={course.progress} colorGradient={course.color_gradient} showLabel={false} />
@@ -223,21 +226,44 @@ export default function CoursesPage() {
               <div className="aspect-video bg-slate-900 rounded-2xl flex flex-col items-center justify-center text-white p-6 space-y-3 shadow-inner">
                 <PlayCircle className="w-16 h-16 text-indigo-400 animate-pulse" />
                 <p className="text-sm font-bold text-slate-200">
-                  Module 4: Next-Gen Server Components & Streaming SSR
+                  Lesson {(selectedCourse.completed_lessons || 0) + 1}: Core Concepts & Practice Application
                 </p>
-                <p className="text-xs text-slate-400">Duration: 42 mins • HD 1080p</p>
+                <p className="text-xs text-slate-400">
+                  {selectedCourse.category} • Instructor: {selectedCourse.instructor || 'EduPulse Faculty'}
+                </p>
               </div>
 
               <div className="flex items-center justify-between pt-2">
                 <div className="text-xs text-slate-500">
-                  Instructor: <strong className="text-slate-800">{selectedCourse.instructor}</strong>
+                  Progress: <strong className="text-slate-800">{selectedCourse.completed_lessons || 0} / {selectedCourse.total_lessons || 20} Lessons ({selectedCourse.progress}%)</strong>
                 </div>
-                <button
-                  onClick={() => setSelectedCourse(null)}
-                  className="px-4 py-2 bg-indigo-600 text-white font-bold text-xs rounded-xl shadow-md"
-                >
-                  Continue Next Lesson
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const total = selectedCourse.total_lessons || 20
+                      const currentComp = selectedCourse.completed_lessons || 0
+                      if (currentComp < total) {
+                        const newComp = currentComp + 1
+                        const newProg = Math.round((newComp / total) * 100)
+                        updateCourseProgress(selectedCourse.id, newProg, newComp)
+                        setSelectedCourse({
+                          ...selectedCourse,
+                          completed_lessons: newComp,
+                          progress: newProg
+                        })
+                      }
+                    }}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition active:scale-95"
+                  >
+                    Mark Lesson Completed (+1)
+                  </button>
+                  <button
+                    onClick={() => setSelectedCourse(null)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl"
+                  >
+                    Close Player
+                  </button>
+                </div>
               </div>
             </div>
           </div>

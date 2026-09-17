@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 -- 2. COURSES TABLE
 CREATE TABLE IF NOT EXISTS public.courses (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  user_id TEXT,
   title TEXT NOT NULL,
   category TEXT NOT NULL,
   progress INT DEFAULT 0,

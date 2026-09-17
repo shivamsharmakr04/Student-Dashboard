@@ -2,15 +2,22 @@
 
 import React from 'react'
 import { useAuth } from '@/context/AuthContext'
+import { useRealtimeCourses } from '@/lib/realtimeService'
 import { Sparkles, ArrowRight, Award, Target, BookOpen, Compass } from 'lucide-react'
 
 export const HeroCard: React.FC = () => {
   const { user } = useAuth()
+  const { courses } = useRealtimeCourses()
 
   const studentName = user?.name || 'Alex Morgan'
   const goalHours = user?.preferences?.learning_goal_hours || 10
   const studyMode = user?.preferences?.study_mode || 'Project-Based'
   const tracks = user?.preferences?.preferred_tracks || ['Web Development', 'Computer Science']
+
+  const avgProgress =
+    courses.length > 0
+      ? Math.round(courses.reduce((sum, c) => sum + c.progress, 0) / courses.length)
+      : 64
 
   return (
     <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-blue-600 text-white p-6 md:p-8 shadow-xl shadow-indigo-600/15 border border-indigo-500/30">
@@ -37,7 +44,7 @@ export const HeroCard: React.FC = () => {
           </h1>
 
           <p className="text-indigo-100/90 text-sm md:text-base leading-relaxed font-normal">
-            You&apos;ve completed <strong className="text-white font-bold">64%</strong> of your target <strong className="text-amber-200 font-bold">{goalHours} hrs/week</strong> learning goal. Customized tracks: <span className="font-semibold text-white">{tracks.slice(0, 2).join(', ')}</span>.
+            You&apos;ve completed <strong className="text-white font-bold">{avgProgress}%</strong> of your target <strong className="text-amber-200 font-bold">{goalHours} hrs/week</strong> learning goal. Customized tracks: <span className="font-semibold text-white">{tracks.slice(0, 2).join(', ')}</span>.
           </p>
 
           <div className="flex flex-wrap items-center gap-4 pt-2">

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { StudentUser, StudentPreferences } from '@/types/auth'
 import { supabase } from '@/lib/supabase'
+import { generateUserCourses } from '@/lib/courseCatalog'
 
 export const DEFAULT_PREFERENCES: StudentPreferences = {
   preferred_tracks: ['Web Development', 'Computer Science'],
@@ -323,6 +324,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ...DEFAULT_PREFERENCES,
         ...preferences
       }
+    }
+
+    // Generate and persist real personalized user courses upon account creation
+    try {
+      const userCourses = generateUserCourses(newUser)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`edupulse_courses_${newUser.id}`, JSON.stringify(userCourses))
+      }
+      if (isSupabaseConfigured) {
+        Promise.resolve(supabase.from('courses').upsert(userCourses)).catch((e: any) =>
+          console.warn('Supabase courses creation note:', e)
+        )
+      }
+    } catch (e) {
+      console.warn('User courses initialization skipped:', e)
     }
 
     saveUserToStorage(newUser)
