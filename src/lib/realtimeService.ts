@@ -9,6 +9,14 @@ import { useAuth } from '@/context/AuthContext'
 import { generateUserCourses } from '@/lib/courseCatalog'
 import { generateUserAssignments } from '@/lib/userAssignmentGenerator'
 import { generateUserSchedule } from '@/lib/userScheduleGenerator'
+import {
+  apiGetCourses,
+  apiUpdateCourseProgress,
+  apiGetAssignments,
+  apiSubmitAssignment,
+  apiGetSchedule,
+  apiAddScheduleEvent
+} from '@/lib/backendApi'
 
 const isSupabaseConfigured =
   Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
@@ -60,6 +68,16 @@ export function useRealtimeCourses() {
     const currentUser = user
 
     async function loadCourses() {
+      // 1. Try fetching from Express Backend API
+      const backendCourses = await apiGetCourses(currentUser.id)
+      if (backendCourses && backendCourses.length > 0) {
+        setCourses(backendCourses)
+        setStored(userStorageKey, backendCourses)
+        setLoading(false)
+        return
+      }
+
+      // 2. Fallback to localStorage or generator
       let currentCourses = getStored<Course[] | null>(userStorageKey, null)
 
       if (!currentCourses || currentCourses.length === 0) {
@@ -143,6 +161,9 @@ export function useRealtimeCourses() {
       return updated
     })
 
+    // Call Express Backend API
+    apiUpdateCourseProgress(courseId, newProgress, newCompletedLessons).catch(() => {})
+
     if (isSupabaseConfigured && user?.id) {
       try {
         const targetCourse = courses.find((c) => c.id === courseId)
@@ -192,6 +213,16 @@ export function useRealtimeAssignments() {
     const currentUser = user
 
     async function loadAssignments() {
+      // 1. Try Express Backend API
+      const backendAssignments = await apiGetAssignments(currentUser.id)
+      if (backendAssignments && backendAssignments.length > 0) {
+        setAssignments(backendAssignments)
+        setStored(userStorageKey, backendAssignments)
+        setLoading(false)
+        return
+      }
+
+      // 2. Fallback to localStorage or generator
       let currentAssignments = getStored<Assignment[] | null>(userStorageKey, null)
       if (!currentAssignments || currentAssignments.length === 0) {
         currentAssignments = generateUserAssignments(currentUser, courses)
@@ -263,6 +294,9 @@ export function useRealtimeAssignments() {
       return updated
     })
 
+    // Call Express Backend API
+    apiSubmitAssignment(id).catch(() => {})
+
     if (isSupabaseConfigured && user?.id) {
       try {
         await supabase
@@ -304,6 +338,16 @@ export function useRealtimeSchedule() {
     const currentUser = user
 
     async function loadSchedule() {
+      // 1. Try Express Backend API
+      const backendSchedule = await apiGetSchedule(currentUser.id)
+      if (backendSchedule && backendSchedule.length > 0) {
+        setEvents(backendSchedule)
+        setStored(userStorageKey, backendSchedule)
+        setLoading(false)
+        return
+      }
+
+      // 2. Fallback to localStorage or generator
       let currentEvents = getStored<ScheduleEvent[] | null>(userStorageKey, null)
       if (!currentEvents || currentEvents.length === 0) {
         currentEvents = generateUserSchedule(currentUser, courses)
@@ -370,6 +414,11 @@ export function useRealtimeSchedule() {
       return updated
     })
 
+    // Call Express Backend API
+    if (user?.id) {
+      apiAddScheduleEvent(user.id, event).catch(() => {})
+    }
+
     if (isSupabaseConfigured && user?.id) {
       try {
         await supabase.from('schedule_events').insert([{ ...newEvent, user_id: user.id }])
@@ -379,3 +428,4 @@ export function useRealtimeSchedule() {
 
   return { events, loading, addScheduleEvent }
 }
+

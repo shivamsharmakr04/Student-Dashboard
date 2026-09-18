@@ -6,6 +6,13 @@ import { supabase } from '@/lib/supabase'
 import { generateUserCourses } from '@/lib/courseCatalog'
 import { generateUserAssignments } from '@/lib/userAssignmentGenerator'
 import { generateUserSchedule } from '@/lib/userScheduleGenerator'
+import {
+  apiLogin,
+  apiSignup,
+  apiUpdateProfile,
+  apiUpdatePreferences,
+  checkBackendHealth
+} from '@/lib/backendApi'
 
 export const DEFAULT_PREFERENCES: StudentPreferences = {
   preferred_tracks: ['Web Development', 'Computer Science'],
@@ -36,6 +43,7 @@ interface AuthContextType {
   isAuthenticated: boolean
   isLoading: boolean
   isRealtimeConnected: boolean
+  isBackendConnected: boolean
   login: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>
   createAccount: (
     details: Omit<StudentUser, 'id' | 'avatar_initials' | 'preferences'>,
@@ -55,12 +63,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<StudentUser | null>(DEMO_STUDENT)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [isRealtimeConnected, setIsRealtimeConnected] = useState<boolean>(false)
+  const [isBackendConnected, setIsBackendConnected] = useState<boolean>(false)
 
   const isSupabaseConfigured =
     Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
     process.env.NEXT_PUBLIC_SUPABASE_URL !== 'https://placeholder.supabase.co' &&
     Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) &&
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY !== 'placeholder-key'
+
+  // Check Express Backend connectivity on mount
+  useEffect(() => {
+    checkBackendHealth().then(healthy => setIsBackendConnected(healthy));
+  }, []);
 
   // Helper to persist user state and notify all active browser windows
   const saveUserToStorage = (userData: StudentUser | null) => {
@@ -196,6 +210,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: 'Please enter both email and password.' }
     }
 
+    // 1. Express Backend Login Attempt
+    const backendResult = await apiLogin(email, pass)
+    if (backendResult && backendResult.success && backendResult.user) {
+      saveUserToStorage(backendResult.user)
+      return { success: true }
+    }
+
+    // 2. Supabase Auth Attempt
     if (isSupabaseConfigured) {
       try {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass })
@@ -255,7 +277,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: true }
     }
 
-    return { success: false, error: 'Invalid email or password.' }
+    return { success: false, error: backendResult?.error || 'Invalid email or password.' }
   }
 
   // Create Account handler
@@ -265,6 +287,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   ): Promise<{ success: boolean; error?: string }> => {
     if (!details.email || !details.name) {
       return { success: false, error: 'Name and email are required.' }
+    }
+
+    // Express Backend Signup Attempt
+    const backendResult = await apiSignup(details, preferences)
+    if (backendResult && backendResult.success && backendResult.user) {
+      saveUserToStorage(backendResult.user)
+      return { success: true }
     }
 
     const initials = details.name
@@ -375,6 +404,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     saveUserToStorage(newUserData)
 
+    // Call Express Backend API
+    if (user.id) {
+      apiUpdateProfile(user.id, updated).catch(() => {})
+    }
+
     // Sync real-time with Supabase if active
     if (isSupabaseConfigured && user.id) {
       Promise.resolve(
@@ -403,6 +437,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     saveUserToStorage(newUserData)
 
+    // Call Express Backend API
+    if (user.id) {
+      apiUpdatePreferences(user.id, updatedPreferences).catch(() => {})
+    }
+
     // Sync real-time with Supabase if active
     if (isSupabaseConfigured && user.id) {
       Promise.resolve(
@@ -426,6 +465,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user,
         isLoading,
         isRealtimeConnected,
+        isBackendConnected,
         login,
         createAccount,
         logout,
@@ -446,3 +486,4 @@ export const useAuth = () => {
   }
   return context
 }
+

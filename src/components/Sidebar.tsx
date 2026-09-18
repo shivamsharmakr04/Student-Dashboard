@@ -24,7 +24,7 @@ import {
 export const Sidebar: React.FC = () => {
   const pathname = usePathname()
   const router = useRouter()
-  const { user, isAuthenticated, logout } = useAuth()
+  const { user, isAuthenticated, isBackendConnected, logout } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
 
   const navItems = [
@@ -68,15 +68,29 @@ export const Sidebar: React.FC = () => {
       >
         <div>
           {/* Brand Header */}
-          <div className="flex items-center gap-3 px-6 py-5 border-b border-slate-100">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
-              <GraduationCap className="w-6 h-6" />
+          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+                <GraduationCap className="w-6 h-6" />
+              </div>
+              <div>
+                <h1 className="font-extrabold text-lg text-slate-900 tracking-tight flex items-center gap-1">
+                  EduPulse <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                </h1>
+                <p className="text-xs text-slate-500 font-medium">Student Learning Hub</p>
+              </div>
             </div>
-            <div>
-              <h1 className="font-extrabold text-lg text-slate-900 tracking-tight flex items-center gap-1">
-                EduPulse <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-              </h1>
-              <p className="text-xs text-slate-500 font-medium">Student Learning Hub</p>
+          </div>
+
+          {/* Backend Status Badge */}
+          <div className="px-6 pt-3 pb-1">
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border ${
+              isBackendConnected 
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80' 
+                : 'bg-amber-50 text-amber-700 border-amber-200/80'
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${isBackendConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+              <span>{isBackendConnected ? 'Backend API: Online (Port 5000)' : 'Backend API: Offline'}</span>
             </div>
           </div>
 
