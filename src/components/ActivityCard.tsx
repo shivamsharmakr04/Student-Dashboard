@@ -9,10 +9,16 @@ export const ActivityCard: React.FC = () => {
   const { user } = useAuth()
   const { courses } = useRealtimeCourses()
   const { assignments } = useRealtimeAssignments()
+  const [mounted, setMounted] = React.useState(false)
+
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const goalHours = user?.preferences?.learning_goal_hours || 10
-  const completedAssignments = assignments.filter((a) => a.status === 'submitted' || a.status === 'graded').length
-  const totalAssignments = assignments.length || 1
+  const completedAssignments = mounted ? assignments.filter((a) => a.status === 'submitted' || a.status === 'graded').length : 3
+  const totalAssignmentsCount = mounted ? assignments.length : 5
+  const totalAssignments = totalAssignmentsCount || 1
   const taskRatio = Math.round((completedAssignments / totalAssignments) * 100)
 
   const gpa = user?.gpa || 3.9
@@ -30,7 +36,7 @@ export const ActivityCard: React.FC = () => {
     },
     {
       title: 'Completed Tasks',
-      value: `${completedAssignments} / ${assignments.length}`,
+      value: `${completedAssignments} / ${totalAssignmentsCount}`,
       change: `${taskRatio}% completion rate`,
       icon: CheckCircle2,
       color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
