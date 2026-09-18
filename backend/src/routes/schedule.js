@@ -1,17 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { authenticateToken } = require('../middleware/auth');
 
-// GET /api/schedule?userId=...
+router.use(authenticateToken);
+
+// GET /api/schedule
 router.get('/', (req, res) => {
-  const userId = req.query.userId || 'demo-student-001';
+  const userId = req.userId || 'demo-student-001';
   let events = db.prepare('SELECT * FROM schedule_events WHERE user_id = ?').all(userId);
 
   if (!events || events.length === 0) {
     events = db.prepare('SELECT * FROM schedule_events WHERE user_id = ?').all('demo-student-001');
   }
 
-  // Convert SQLite integer (0 or 1) for is_online to boolean for frontend compatibility
   const formatted = events.map(e => ({
     ...e,
     is_online: Boolean(e.is_online)
@@ -20,16 +22,16 @@ router.get('/', (req, res) => {
   res.json({ success: true, events: formatted });
 });
 
-// POST /api/schedule (Add new schedule event)
+// POST /api/schedule
 router.post('/', (req, res) => {
-  const { userId, title, course_code, type, start_time, end_time, day, location, instructor, is_online, meeting_url, color, notes } = req.body;
+  const { title, course_code, type, start_time, end_time, day, location, instructor, is_online, meeting_url, color, notes } = req.body;
 
   if (!title || !day) {
     return res.status(400).json({ success: false, error: 'Title and day are required' });
   }
 
   const id = `evt-${Date.now()}`;
-  const targetUserId = userId || 'demo-student-001';
+  const targetUserId = req.userId || 'demo-student-001';
 
   db.prepare(`
     INSERT INTO schedule_events (id, user_id, title, course_code, type, start_time, end_time, day, location, instructor, is_online, meeting_url, color, notes)

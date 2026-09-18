@@ -1,10 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { authenticateToken } = require('../middleware/auth');
 
-// GET /api/courses?userId=...
+// Apply authentication middleware to all course routes
+router.use(authenticateToken);
+
+// GET /api/courses
 router.get('/', (req, res) => {
-  const userId = req.query.userId || 'demo-student-001';
+  const userId = req.userId || 'demo-student-001';
   let courses = db.prepare('SELECT * FROM courses WHERE user_id = ?').all(userId);
 
   if (!courses || courses.length === 0) {
@@ -16,7 +20,7 @@ router.get('/', (req, res) => {
 
 // GET /api/courses/:id
 router.get('/:id', (req, res) => {
-  const course = db.prepare('SELECT * FROM courses WHERE id = ?').get(req.params.id);
+  const course = db.prepare('SELECT * FROM courses WHERE id = ? AND (user_id = ? OR user_id = "demo-student-001")').get(req.params.id, req.userId);
   if (!course) {
     return res.status(404).json({ success: false, error: 'Course not found' });
   }

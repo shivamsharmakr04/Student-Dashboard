@@ -1,10 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { authenticateToken } = require('../middleware/auth');
 
-// GET /api/assignments?userId=...
+router.use(authenticateToken);
+
+// GET /api/assignments
 router.get('/', (req, res) => {
-  const userId = req.query.userId || 'demo-student-001';
+  const userId = req.userId || 'demo-student-001';
   let assignments = db.prepare('SELECT * FROM assignments WHERE user_id = ?').all(userId);
 
   if (!assignments || assignments.length === 0) {
@@ -34,16 +37,16 @@ router.post('/:id/submit', (req, res) => {
   res.json({ success: true, assignment: updatedAssignment });
 });
 
-// POST /api/assignments (Create new assignment)
+// POST /api/assignments
 router.post('/', (req, res) => {
-  const { userId, title, course_code, course_name, due_date, due_time, weightage, max_score, description, file_format } = req.body;
+  const { title, course_code, course_name, due_date, due_time, weightage, max_score, description, file_format } = req.body;
 
   if (!title) {
     return res.status(400).json({ success: false, error: 'Title is required' });
   }
 
   const id = `asgn-${Date.now()}`;
-  const targetUserId = userId || 'demo-student-001';
+  const targetUserId = req.userId || 'demo-student-001';
 
   db.prepare(`
     INSERT INTO assignments (id, user_id, title, course_code, course_name, due_date, due_time, status, weightage, max_score, description, file_format)

@@ -1,13 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { authenticateToken } = require('../middleware/auth');
 
-// GET /api/analytics?userId=...
+router.use(authenticateToken);
+
+// GET /api/analytics
 router.get('/', (req, res) => {
-  const userId = req.query.userId || 'demo-student-001';
+  const userId = req.userId || 'demo-student-001';
 
-  const user = db.prepare('SELECT gpa FROM users WHERE id = ?').get(userId);
+  const user = db.prepare('SELECT gpa, name FROM users WHERE id = ?').get(userId);
   const currentGpa = user ? user.gpa : 3.92;
+  const userName = user ? user.name : 'Student';
 
   const subjectPerformance = [
     { course_code: 'CS-401', course_name: 'Advanced React & Next.js Architecture', score: 95, grade: 'A+', credits: 4, color: 'from-blue-600 to-indigo-600' },

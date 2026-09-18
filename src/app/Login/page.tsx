@@ -43,7 +43,7 @@ const STUDY_STYLES: { id: StudentPreferences['study_mode']; label: string; desc:
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login, createAccount, loginAsDemo, isRealtimeConnected } = useAuth()
+  const { login, createAccount, loginAsDemo, isRealtimeConnected, isBackendConnected } = useAuth()
 
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [signupStep, setSignupStep] = useState<1 | 2>(1)
@@ -163,11 +163,13 @@ export default function LoginPage() {
             Student Learning Portal & Academic Dashboard
           </p>
 
-          {/* Realtime Auth Connection Status Badge */}
+          {/* Database & Auth Connection Status Badge */}
           <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full bg-white border border-slate-200/80 text-[11px] font-bold text-slate-600 shadow-sm">
-            <Radio className={`w-3 h-3 ${isRealtimeConnected ? 'text-emerald-500 animate-pulse' : 'text-indigo-500'}`} />
+            <Radio className={`w-3 h-3 ${isBackendConnected ? 'text-emerald-500 animate-pulse' : 'text-indigo-500'}`} />
             <span>
-              {isRealtimeConnected
+              {isBackendConnected
+                ? 'Express SQLite DB & Authorized Session Connected'
+                : isRealtimeConnected
                 ? 'Supabase Real-time Auth Connected'
                 : 'Real-time Session Ready'}
             </span>

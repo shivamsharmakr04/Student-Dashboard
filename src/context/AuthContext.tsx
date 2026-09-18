@@ -11,7 +11,8 @@ import {
   apiSignup,
   apiUpdateProfile,
   apiUpdatePreferences,
-  checkBackendHealth
+  checkBackendHealth,
+  setAuthToken
 } from '@/lib/backendApi'
 
 export const DEFAULT_PREFERENCES: StudentPreferences = {
@@ -383,6 +384,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Logout handler
   const logout = () => {
+    setAuthToken(null)
     if (isSupabaseConfigured) {
       supabase.auth.signOut().catch(() => {})
     }
