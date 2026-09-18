@@ -44,11 +44,22 @@ app.get('/', (req, res) => {
   res.send('🎓 EduPulse Backend API Server is running on port ' + PORT);
 });
 
-// Start Express server
-app.listen(PORT, () => {
+// Start Express server with error handler
+const server = app.listen(PORT, () => {
   console.log(`=================================================`);
   console.log(`🚀 EduPulse Express Backend Server running!`);
   console.log(`📡 URL: http://localhost:${PORT}`);
   console.log(`🩺 Health check: http://localhost:${PORT}/api/health`);
   console.log(`=================================================`);
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`\n⚠️ Port ${PORT} is currently in use by an existing backend instance.`);
+    console.error(`Your EduPulse API is already live and functioning at http://localhost:${PORT}/api/health`);
+    console.error(`If you wish to restart it, stop the running process first or use: npx kill-port ${PORT}\n`);
+    process.exit(1);
+  } else {
+    console.error('Server error:', err);
+  }
 });
