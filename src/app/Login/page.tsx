@@ -266,24 +266,6 @@ export default function LoginPage() {
                 <ArrowRight className="w-4 h-4" />
               </button>
 
-              {/* Quick Demo Student Sign In Divider */}
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200" />
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-white px-3 text-slate-400 font-medium">Or test instantly</span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleDemoSignIn}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-amber-50 to-indigo-50 border border-indigo-200 text-indigo-900 font-bold text-xs hover:border-indigo-400 transition"
-              >
-                <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
-                <span>1-Click Demo Login (Alex Morgan)</span>
-              </button>
             </form>
           )}
 
