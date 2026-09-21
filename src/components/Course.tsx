@@ -7,6 +7,7 @@ import { Code, Binary, Palette, Cpu, Cloud, BookOpen, PlayCircle, User } from 'l
 
 interface CourseProps {
   course: CourseType
+  onResume?: (course: CourseType) => void
 }
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -17,7 +18,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Cloud: Cloud
 }
 
-export const CourseCard: React.FC<CourseProps> = ({ course }) => {
+export const CourseCard: React.FC<CourseProps> = ({ course, onResume }) => {
   const IconComponent = iconMap[course.icon_name] || BookOpen
 
   return (
@@ -65,7 +66,10 @@ export const CourseCard: React.FC<CourseProps> = ({ course }) => {
           <ProgressBar progress={course.progress} colorGradient={course.color_gradient} showLabel={false} />
         </div>
 
-        <button className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-indigo-600 text-slate-800 hover:text-white font-semibold text-xs transition-all duration-200 group-hover:shadow-md">
+        <button
+          onClick={() => onResume?.(course)}
+          className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-indigo-600 text-slate-800 hover:text-white font-semibold text-xs transition-all duration-200 group-hover:shadow-md active:scale-95"
+        >
           <PlayCircle className="w-4 h-4" />
           <span>Continue Lesson</span>
         </button>

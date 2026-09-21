@@ -3,7 +3,7 @@
 import React from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useRealtimeAssignments, useRealtimeCourses } from '@/lib/realtimeService'
-import { Clock, CheckCircle2, Trophy, Flame, TrendingUp } from 'lucide-react'
+import { Clock, CheckCircle2, Award, BookOpen, TrendingUp } from 'lucide-react'
 
 export const ActivityCard: React.FC = () => {
   const { user } = useAuth()
@@ -21,39 +21,37 @@ export const ActivityCard: React.FC = () => {
   const totalAssignments = totalAssignmentsCount || 1
   const taskRatio = Math.round((completedAssignments / totalAssignments) * 100)
 
-  const gpa = user?.gpa || 3.9
-  const classRank = gpa >= 3.9 ? '#3 of 120' : gpa >= 3.5 ? '#8 of 120' : '#15 of 120'
-
+  const gpa = user?.gpa || 3.92
   const totalStudyHrs = (goalHours * 2.8).toFixed(1)
 
   const stats = [
     {
-      title: 'Study Hours',
+      title: 'Weekly Study Effort',
       value: `${totalStudyHrs} hrs`,
       change: `Target: ${goalHours} hrs/week`,
       icon: Clock,
-      color: 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+      color: 'bg-indigo-50 text-indigo-600 border-indigo-100'
     },
     {
-      title: 'Completed Tasks',
+      title: 'Coursework Progress',
       value: `${completedAssignments} / ${totalAssignmentsCount}`,
-      change: `${taskRatio}% completion rate`,
+      change: `${taskRatio}% completed`,
       icon: CheckCircle2,
-      color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+      color: 'bg-emerald-50 text-emerald-600 border-emerald-100'
     },
     {
-      title: 'Class Rank',
-      value: classRank,
-      change: `GPA: ${gpa.toFixed(2)}`,
-      icon: Trophy,
-      color: 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+      title: 'Cumulative GPA',
+      value: `${gpa.toFixed(2)}`,
+      change: gpa >= 3.8 ? 'Top Honor Roll ⭐' : 'Good Academic Standing',
+      icon: Award,
+      color: 'bg-amber-50 text-amber-600 border-amber-100'
     },
     {
-      title: 'Active Streak',
-      value: '12 Days',
-      change: 'Personal Best ⚡',
-      icon: Flame,
-      color: 'bg-rose-500/10 text-rose-600 border-rose-500/20'
+      title: 'Active Courses',
+      value: `${courses.length} Enrolled`,
+      change: `${courses.filter(c => c.progress === 100).length} Completed`,
+      icon: BookOpen,
+      color: 'bg-purple-50 text-purple-600 border-purple-100'
     }
   ]
 
@@ -73,14 +71,14 @@ export const ActivityCard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* 4 Key Stat Cards */}
+      {/* 4 Key Dynamic Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => {
           const Icon = stat.icon
           return (
             <div
               key={stat.title}
-              className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow duration-200"
+              className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all duration-200"
             >
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-semibold text-slate-500">
@@ -91,7 +89,7 @@ export const ActivityCard: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-1">
-                <h3 className="text-2xl font-extrabold text-slate-900">
+                <h3 className="text-2xl font-black text-slate-900">
                   {stat.value}
                 </h3>
                 <p className="text-xs text-slate-500 flex items-center gap-1 font-medium">
@@ -105,17 +103,17 @@ export const ActivityCard: React.FC = () => {
       </div>
 
       {/* Weekly Learning Activity Visual Chart */}
-      <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm">
-        <div className="flex items-center justify-between mb-6">
+      <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2">
           <div>
             <h3 className="text-base font-bold text-slate-900">
-              Weekly Learning Hours ({user?.name || 'Student'})
+              Weekly Study Hours & Activity
             </h3>
             <p className="text-xs text-slate-500">
-              Hours spent across all {courses.length} enrolled courses based on your {goalHours} hrs/week target
+              Tracked study time across all {courses.length} active courses (Goal: {goalHours} hrs/week)
             </p>
           </div>
-          <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-200/80">
+          <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-200/80 w-fit">
             Avg: {dailyAvg} hrs/day
           </span>
         </div>
@@ -130,7 +128,7 @@ export const ActivityCard: React.FC = () => {
                   {item.hours} hrs
                 </div>
                 <div
-                  className="w-full max-w-[36px] bg-gradient-to-t from-indigo-600 to-indigo-400 group-hover:from-indigo-500 group-hover:to-purple-500 rounded-t-lg transition-all duration-300 shadow-sm"
+                  className="w-full max-w-[36px] bg-gradient-to-t from-indigo-600 to-indigo-400 group-hover:from-indigo-500 group-hover:to-purple-500 rounded-t-xl transition-all duration-300 shadow-sm"
                   style={{ height: `${item.percentage}%` }}
                 />
               </div>

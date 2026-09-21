@@ -82,17 +82,6 @@ export const Sidebar: React.FC = () => {
             </div>
           </div>
 
-          {/* Backend Status Badge */}
-          <div className="px-6 pt-3 pb-1">
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border ${
-              isBackendConnected 
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80' 
-                : 'bg-amber-50 text-amber-700 border-amber-200/80'
-            }`}>
-              <span className={`w-2 h-2 rounded-full ${isBackendConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-              <span>{isBackendConnected ? 'Backend API: Online (Port 5000)' : 'Backend API: Offline'}</span>
-            </div>
-          </div>
 
           {/* Navigation Items */}
           <nav className="px-4 py-5 space-y-1">

@@ -1,16 +1,40 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import CourseCard from '@/components/Course'
 import { useRealtimeCourses } from '@/lib/realtimeService'
-import { BookMarked, Filter, Sparkles } from 'lucide-react'
+import { Course } from '@/types/course'
+import { BookMarked, Filter, Sparkles, BookOpen } from 'lucide-react'
 
-export const EnrolledCoursesSection: React.FC = () => {
+interface EnrolledCoursesSectionProps {
+  searchQuery?: string
+  onResumeCourse?: (course: Course) => void
+}
+
+export const EnrolledCoursesSection: React.FC<EnrolledCoursesSectionProps> = ({
+  searchQuery = '',
+  onResumeCourse
+}) => {
   const { courses, loading } = useRealtimeCourses()
+  const [activeTab, setActiveTab] = useState<'all' | 'active' | 'completed'>('all')
+
+  const filteredCourses = courses.filter((course) => {
+    const matchesTab =
+      activeTab === 'all' ||
+      (activeTab === 'active' && course.progress < 100) ||
+      (activeTab === 'completed' && course.progress === 100)
+    const matchesSearch =
+      !searchQuery ||
+      course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (course.category && course.category.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (course.instructor && course.instructor.toLowerCase().includes(searchQuery.toLowerCase()))
+
+    return matchesTab && matchesSearch
+  })
 
   return (
     <div className="lg:col-span-2 space-y-6" id="courses">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
             <BookMarked className="w-5 h-5 text-indigo-600" />
@@ -21,11 +45,25 @@ export const EnrolledCoursesSection: React.FC = () => {
           </h3>
         </div>
 
-        <div className="flex items-center gap-2 text-xs">
-          <span className="inline-flex items-center gap-1 text-slate-500 font-medium">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            Tailored to Your Tracks
-          </span>
+        {/* Filter Pills */}
+        <div className="flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
+          {[
+            { id: 'all', label: 'All' },
+            { id: 'active', label: 'In Progress' },
+            { id: 'completed', label: 'Completed' }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
+                activeTab === tab.id
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -46,17 +84,24 @@ export const EnrolledCoursesSection: React.FC = () => {
             </div>
           ))}
         </div>
-      ) : courses.length === 0 ? (
+      ) : filteredCourses.length === 0 ? (
         <div className="p-8 rounded-2xl bg-white border border-slate-200/80 text-center space-y-2">
-          <p className="text-sm font-bold text-slate-700">No courses currently enrolled.</p>
+          <BookOpen className="w-8 h-8 text-slate-400 mx-auto" />
+          <p className="text-sm font-bold text-slate-700">No matching courses found.</p>
           <p className="text-xs text-slate-500">
-            Create an account or select study tracks to generate your personalized course portfolio.
+            {searchQuery
+              ? `No courses matching "${searchQuery}". Try a different keyword.`
+              : 'Try selecting a different filter tab.'}
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {courses.map((course) => (
-            <CourseCard key={course.id} course={course} />
+          {filteredCourses.map((course) => (
+            <CourseCard
+              key={course.id}
+              course={course}
+              onResume={onResumeCourse}
+            />
           ))}
         </div>
       )}
