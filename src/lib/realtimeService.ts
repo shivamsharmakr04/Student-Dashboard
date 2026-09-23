@@ -52,8 +52,6 @@ export function useRealtimeCourses() {
 
   const [courses, setCourses] = useState<Course[]>(() => {
     if (!user) return []
-    const stored = getStored<Course[] | null>(userStorageKey, null)
-    if (stored && stored.length > 0) return stored
     return generateUserCourses(user)
   })
   const [loading, setLoading] = useState(true)
@@ -197,8 +195,6 @@ export function useRealtimeAssignments() {
 
   const [assignments, setAssignments] = useState<Assignment[]>(() => {
     if (!user) return []
-    const stored = getStored<Assignment[] | null>(userStorageKey, null)
-    if (stored && stored.length > 0) return stored
     return generateUserAssignments(user, courses)
   })
   const [loading, setLoading] = useState(true)
@@ -322,8 +318,6 @@ export function useRealtimeSchedule() {
 
   const [events, setEvents] = useState<ScheduleEvent[]>(() => {
     if (!user) return []
-    const stored = getStored<ScheduleEvent[] | null>(userStorageKey, null)
-    if (stored && stored.length > 0) return stored
     return generateUserSchedule(user, courses)
   })
   const [loading, setLoading] = useState(true)

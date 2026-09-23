@@ -186,7 +186,7 @@ export const DEMO_COURSES: Course[] = [
     completed_lessons: 20,
     color_gradient: 'from-blue-600 to-indigo-600',
     description: 'Master server components, streaming, performance tuning, and fullstack state management.',
-    created_at: new Date().toISOString()
+    created_at: '2026-01-01T00:00:00.000Z'
   },
   {
     id: 'demo-2',
@@ -200,7 +200,7 @@ export const DEMO_COURSES: Course[] = [
     completed_lessons: 18,
     color_gradient: 'from-purple-600 to-pink-600',
     description: 'In-depth exploration of graph algorithms, dynamic programming, and complexity analysis.',
-    created_at: new Date().toISOString()
+    created_at: '2026-01-01T00:00:00.000Z'
   },
   {
     id: 'demo-3',
@@ -214,7 +214,7 @@ export const DEMO_COURSES: Course[] = [
     completed_lessons: 8,
     color_gradient: 'from-amber-500 to-rose-500',
     description: 'Crafting cohesive token systems, high-fidelity prototypes, and accessible interface designs.',
-    created_at: new Date().toISOString()
+    created_at: '2026-01-01T00:00:00.000Z'
   },
   {
     id: 'demo-4',
@@ -228,7 +228,7 @@ export const DEMO_COURSES: Course[] = [
     completed_lessons: 18,
     color_gradient: 'from-emerald-500 to-teal-700',
     description: 'Building pipeline workflows, model deployment, and feature engineering with PyTorch.',
-    created_at: new Date().toISOString()
+    created_at: '2026-01-01T00:00:00.000Z'
   },
   {
     id: 'demo-5',
@@ -242,7 +242,7 @@ export const DEMO_COURSES: Course[] = [
     completed_lessons: 4,
     color_gradient: 'from-cyan-500 to-blue-600',
     description: 'Docker containerization, Kubernetes orchestration, CI/CD automation, and Terraform.',
-    created_at: new Date().toISOString()
+    created_at: '2026-01-01T00:00:00.000Z'
   }
 ]
 
@@ -290,7 +290,7 @@ export function generateUserCourses(user: StudentUser): Course[] {
       progress: initialProgress,
       completed_lessons: initialCompleted,
       total_lessons: totalLessons,
-      created_at: new Date().toISOString()
+      created_at: '2026-01-01T00:00:00.000Z'
     }
   })
 }
