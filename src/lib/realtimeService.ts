@@ -107,7 +107,7 @@ export function useRealtimeCourses() {
             setCourses(data as Course[])
             setStored(userStorageKey, data)
           } else if (!error && (!data || data.length === 0)) {
-            await supabase.from('courses').upsert(currentCourses)
+            await supabase.from('courses').upsert(currentCourses.map((item) => ({ ...item, user_id: currentUser.id })))
           }
         } catch (e) {
           console.warn('Supabase fetch courses failed:', e)
@@ -242,7 +242,7 @@ export function useRealtimeAssignments() {
             setAssignments(data as Assignment[])
             setStored(userStorageKey, data)
           } else if (!error && (!data || data.length === 0)) {
-            await supabase.from('assignments').upsert(currentAssignments)
+            await supabase.from('assignments').upsert(currentAssignments.map((item) => ({ ...item, user_id: currentUser.id })))
           }
         } catch (e) {
           console.warn('Supabase fetch assignments failed:', e)
@@ -367,7 +367,7 @@ export function useRealtimeSchedule() {
             setEvents(data as ScheduleEvent[])
             setStored(userStorageKey, data)
           } else if (!error && (!data || data.length === 0)) {
-            await supabase.from('schedule_events').upsert(currentEvents)
+            await supabase.from('schedule_events').upsert(currentEvents.map((item) => ({ ...item, user_id: currentUser.id })))
           }
         } catch (e) {
           console.warn('Supabase fetch schedule failed:', e)
