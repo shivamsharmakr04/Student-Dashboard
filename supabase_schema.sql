@@ -18,7 +18,7 @@ create table if not exists public.profiles (
 
 create table if not exists public.courses (
   id text primary key default gen_random_uuid()::text,
-  user_id uuid references auth.users(id) on delete cascade not null,
+  user_id text not null,
   title text not null,
   category text not null,
   progress int not null default 0 check (progress between 0 and 100),
@@ -70,7 +70,7 @@ create table if not exists public.schedule_events (
 
 create table if not exists public.activity_logs (
   id text primary key default gen_random_uuid()::text,
-  student_id uuid references auth.users(id) on delete cascade not null,
+  student_id text not null,
   activity_type text not null,
   duration_minutes int not null,
   notes text,
@@ -80,10 +80,8 @@ create table if not exists public.activity_logs (
 -- Upgrade an existing database created by an older version.
 alter table public.profiles add column if not exists year_level text;
 alter table public.profiles add column if not exists gpa numeric;
-alter table public.courses alter column user_id type uuid using user_id::uuid;
 alter table public.assignments add column if not exists user_id uuid references auth.users(id) on delete cascade;
 alter table public.schedule_events add column if not exists user_id uuid references auth.users(id) on delete cascade;
-alter table public.activity_logs alter column student_id type uuid using student_id::uuid;
 
 create index if not exists courses_user_id_idx on public.courses(user_id);
 create index if not exists assignments_user_id_idx on public.assignments(user_id);
@@ -111,7 +109,7 @@ create policy "profiles_owner_select" on public.profiles for select to authentic
 create policy "profiles_owner_insert" on public.profiles for insert to authenticated with check (id = auth.uid());
 create policy "profiles_owner_update" on public.profiles for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
 
-create policy "courses_owner_all" on public.courses for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "courses_owner_all" on public.courses for all to authenticated using (user_id = auth.uid()::text) with check (user_id = auth.uid()::text);
 create policy "assignments_owner_all" on public.assignments for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy "schedule_owner_all" on public.schedule_events for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy "activity_owner_all" on public.activity_logs for all to authenticated using (student_id = auth.uid()) with check (student_id = auth.uid());
