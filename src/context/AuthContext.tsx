@@ -214,6 +214,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 1. Express Backend Login Attempt
     const backendResult = await apiLogin(email, pass)
     if (backendResult && backendResult.success && backendResult.user) {
+      if (backendResult.token && backendResult.refresh_token && isSupabaseConfigured) {
+        await supabase.auth.setSession({
+          access_token: backendResult.token,
+          refresh_token: backendResult.refresh_token
+        })
+      }
       saveUserToStorage(backendResult.user)
       return { success: true }
     }
@@ -293,6 +299,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Express Backend Signup Attempt
     const backendResult = await apiSignup(details, preferences)
     if (backendResult && backendResult.success && backendResult.user) {
+      if (backendResult.token && backendResult.refresh_token && isSupabaseConfigured) {
+        await supabase.auth.setSession({
+          access_token: backendResult.token,
+          refresh_token: backendResult.refresh_token
+        })
+      }
       saveUserToStorage(backendResult.user)
       return { success: true }
     }
@@ -370,9 +382,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem(`edupulse_schedule_${newUser.id}`, JSON.stringify(userSchedule))
       }
       if (isSupabaseConfigured) {
-        Promise.resolve(supabase.from('courses').upsert(userCourses)).catch(() => {})
-        Promise.resolve(supabase.from('assignments').upsert(userAssignments)).catch(() => {})
-        Promise.resolve(supabase.from('schedule_events').upsert(userSchedule)).catch(() => {})
+        Promise.resolve(supabase.from('courses').upsert(userCourses.map((item) => ({ ...item, user_id: newUser.id })))).catch(() => {})
+        Promise.resolve(supabase.from('assignments').upsert(userAssignments.map((item) => ({ ...item, user_id: newUser.id })))).catch(() => {})
+        Promise.resolve(supabase.from('schedule_events').upsert(userSchedule.map((item) => ({ ...item, user_id: newUser.id })))).catch(() => {})
       }
     } catch (e) {
       console.warn('User initial data generation note:', e)
