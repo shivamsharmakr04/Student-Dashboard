@@ -43,4 +43,5 @@ next-env.d.ts
 # backend
 backend/node_modules
 *.sqlite
+*.sqlite-*
 
