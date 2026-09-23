@@ -1,65 +1,8 @@
-const express = require('express');
-const router = express.Router();
-const db = require('../db');
-const { authenticateToken } = require('../middleware/auth');
-
+const express=require('express');
+const router=express.Router();
+const supabase=require('../supabase');
+const {authenticateToken}=require('../middleware/auth');
 router.use(authenticateToken);
-
-// GET /api/schedule
-router.get('/', (req, res) => {
-  const userId = req.userId || 'demo-student-001';
-  let events = db.prepare('SELECT * FROM schedule_events WHERE user_id = ?').all(userId);
-
-  if (!events || events.length === 0) {
-    events = db.prepare('SELECT * FROM schedule_events WHERE user_id = ?').all('demo-student-001');
-  }
-
-  const formatted = events.map(e => ({
-    ...e,
-    is_online: Boolean(e.is_online)
-  }));
-
-  res.json({ success: true, events: formatted });
-});
-
-// POST /api/schedule
-router.post('/', (req, res) => {
-  const { title, course_code, type, start_time, end_time, day, location, instructor, is_online, meeting_url, color, notes } = req.body;
-
-  if (!title || !day) {
-    return res.status(400).json({ success: false, error: 'Title and day are required' });
-  }
-
-  const id = `evt-${Date.now()}`;
-  const targetUserId = req.userId || 'demo-student-001';
-
-  db.prepare(`
-    INSERT INTO schedule_events (id, user_id, title, course_code, type, start_time, end_time, day, location, instructor, is_online, meeting_url, color, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    id, targetUserId, title,
-    course_code || 'GEN-101',
-    type || 'lecture',
-    start_time || '10:00 AM',
-    end_time || '11:00 AM',
-    day,
-    location || 'Main Campus',
-    instructor || 'Instructor',
-    is_online ? 1 : 0,
-    meeting_url || null,
-    color || 'from-blue-600 to-indigo-600',
-    notes || ''
-  );
-
-  const newEvent = db.prepare('SELECT * FROM schedule_events WHERE id = ?').get(id);
-
-  res.json({
-    success: true,
-    event: {
-      ...newEvent,
-      is_online: Boolean(newEvent.is_online)
-    }
-  });
-});
-
-module.exports = router;
+router.get('/',async(req,res)=>{const {data,error}=await supabase.from('schedule_events').select('*').eq('user_id',req.userId).order('created_at',{ascending:false});if(error)return res.status(500).json({success:false,error:error.message});res.json({success:true,events:(data||[]).map(e=>({...e,is_online:Boolean(e.is_online)}))});});
+router.post('/',async(req,res)=>{if(!req.body.title||!req.body.day)return res.status(400).json({success:false,error:'Title and day are required'});const row={...req.body,user_id:req.userId,id:req.body.id||crypto.randomUUID(),is_online:Boolean(req.body.is_online)};delete row.userId;const {data,error}=await supabase.from('schedule_events').insert(row).select().single();if(error)return res.status(400).json({success:false,error:error.message});res.status(201).json({success:true,event:data});});
+module.exports=router;
