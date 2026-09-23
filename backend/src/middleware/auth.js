@@ -1,41 +1,18 @@
-const db = require('../db');
+const supabase = require('../supabase');
 
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  let userId = null;
-
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.split(' ')[1];
-    // Token format: stu-token-<userId> or direct userId
-    if (token.startsWith('stu-token-')) {
-      userId = token.replace('stu-token-', '');
-    } else {
-      userId = token;
-    }
-  } else if (req.headers['x-user-id']) {
-    userId = req.headers['x-user-id'];
-  } else if (req.query.userId) {
-    userId = req.query.userId;
+async function authenticateToken(req, res, next) {
+  try {
+    const header = req.headers.authorization || '';
+    const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+    if (!token) return res.status(401).json({ success: false, error: 'Authentication required.' });
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data?.user) return res.status(401).json({ success: false, error: 'Invalid or expired token.' });
+    req.authUser = data.user;
+    req.userId = data.user.id;
+    next();
+  } catch (error) {
+    console.error(error);
+    res.status(401).json({ success: false, error: 'Authentication failed.' });
   }
-
-  // Fallback to demo user if no token provided for public browsing
-  if (!userId) {
-    userId = 'demo-student-001';
-  }
-
-  const user = db.prepare('SELECT id, name, email, student_id, major, bio, year_level, gpa, avatar_initials, preferences FROM users WHERE id = ?').get(userId);
-
-  if (user) {
-    req.userId = user.id;
-    req.user = {
-      ...user,
-      preferences: user.preferences ? JSON.parse(user.preferences) : {}
-    };
-  } else {
-    req.userId = userId;
-  }
-
-  next();
 }
-
 module.exports = { authenticateToken };
